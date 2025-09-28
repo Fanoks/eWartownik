@@ -1,6 +1,15 @@
 [package]
 name = "eWartownik"
 version = "0.1.0"
+authors = ["Jakub Konieczny"]
 edition = "2024"
+readme = "README.md"
+repository = "https://github.com/Fanoks/eWartownik"
+license = "MIT"
+build = "build.rs"
 
 [dependencies]
+slint = "1.13.1"
+
+[build-dependencies]
+slint-build = "1.13.1"
