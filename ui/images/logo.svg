@@ -1,0 +1,17 @@
+<!--?xml version="1.0" encoding="UTF-8"?-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="eWartownik medieval favicon">
+  <!-- Francuska tarcza -->
+  <path d="M12 6 
+           H52 
+           V26 
+           C52 44 40 56 32 61 
+           C24 56 12 44 12 26 
+           V6 Z" fill="#1E7A3D"></path>
+  
+  <!-- Litera "e" -->
+  <text x="20" y="42" font-size="28" font-family="Arial, sans-serif" font-weight="bold" fill="#FFFFFF">e</text>
+  
+  <!-- Plus -->
+  <rect x="42" y="13" width="14" height="4" rx="1.5" fill="#FFD166"></rect>
+  <rect x="47" y="8" width="4" height="14" rx="1.5" fill="#FFD166"></rect>
+</svg>

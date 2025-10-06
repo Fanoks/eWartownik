@@ -1,0 +1,111 @@
+import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView } from "std-widgets.slint";
+import { Title } from "title.slint";
+
+export component MainWindow inherits Window {
+    title: "eWartownik";
+    icon: @image-url("images/logo.svg");
+    width: 400px;
+    height: 600px;
+
+    in-out property <int> current_screen: 0; // 0 = main, 1 = persons, 2 = logs, 3 = setings
+    
+    function change_screen(index: int) {
+        root.current_screen = index;
+        nav_btn1.checked = index == 0;
+        nav_btn2.checked = index == 1;
+        nav_btn3.checked = index == 2;
+        nav_btn4.checked = index == 3;
+    }
+
+    VerticalBox {
+        spacing: 10px;
+        padding: 0px;
+
+        // -------------------------------
+        // Main Screen
+        if root.current_screen == 0: VerticalBox {
+            spacing: 5px;
+
+            Title { text: "eWartownik"; }
+            GroupBox {
+                title: @tr("CURRENT_PERSONEL_LIST");
+
+                VerticalBox {
+                    spacing: 5px;
+                    // Current state of persons
+                }
+            }
+            HorizontalBox {
+                spacing: 10px;
+
+                Button { text: @tr("GET_IN"); }
+                Button { text: @tr("GET_OUT"); }
+            }
+        }
+
+        // -------------------------------
+        // Persos
+        if root.current_screen == 1: VerticalBox {
+            spacing: 5px;
+
+            Title { text: @tr("PERSONEL_LIST"); }
+            ListView {}
+            Button { text: @tr("ADD_PERSON"); }
+        }
+
+        // -------------------------------
+        // Logs
+        if root.current_screen == 2: VerticalBox {
+            spacing: 5px;
+
+            Title { text: @tr("LOGS"); }
+            ListView {}
+        }
+
+        // -------------------------------
+        // Settings
+        if root.current_screen == 3: VerticalBox {
+            spacing: 5px;
+
+            Title { text: @tr("SETTINGS"); }
+        }
+
+        // -------------------------------
+        // Navigation Bar
+        Rectangle {
+            height: 50px;
+            width: root.width;
+
+            HorizontalBox {
+                padding: 0px;
+                spacing: 0px;
+
+                nav_btn1 := Button {
+                    icon: @image-url("images/home.svg");
+                    colorize-icon: true;
+                    checkable: true;
+                    checked: true;
+                    clicked => { change_screen(0); }
+                }
+                nav_btn2 := Button {
+                    icon: @image-url("images/group.svg");
+                    colorize-icon: true;
+                    checkable: true;
+                    clicked => { change_screen(1); }
+                }
+                nav_btn3 := Button {
+                    icon: @image-url("images/script.svg");
+                    colorize-icon: true;
+                    checkable: true;
+                    clicked => { change_screen(2); }
+                }
+                nav_btn4 := Button {
+                    icon: @image-url("images/cog.svg");
+                    colorize-icon: true;
+                    checkable: true;
+                    clicked => { change_screen(3); }
+                }
+            }
+        }
+    }
+}
