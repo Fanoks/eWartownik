@@ -9,6 +9,7 @@ license = "MIT"
 build = "build.rs"
 
 [dependencies]
+rusqlite = "0.37.0"
 slint = "1.13.1"
 
 [build-dependencies]
