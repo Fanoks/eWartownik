@@ -5,6 +5,8 @@
 /lang/
 /messages.pot
 
+/db/
+
 # Alternative VCS directory
 /.jj/
 /.hg/
