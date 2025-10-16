@@ -3,12 +3,16 @@
 
 use std::error::Error;
 
+mod db_operations;
+
 slint::include_modules!();
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let conn: rusqlite::Connection = db_operations::get_db()?;
+
     let ui = MainWindow::new()?;
 
-    let _ = slint::select_bundled_translation("pl");
+    slint::select_bundled_translation("en")?;
 
     ui.run()?;
 
