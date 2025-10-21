@@ -5,6 +5,9 @@ use cfg_if::cfg_if;
 use serde::{Serialize, Deserialize};
 use rusqlite::{ToSql, Connection, Result, types::{ToSqlOutput, ValueRef, FromSql, FromSqlResult, FromSqlError}};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use slint::Color;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 macro_rules! impl_sql_enum_for {
     ($enum_type:ident{
@@ -32,23 +35,69 @@ macro_rules! impl_sql_enum_for {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum RankLevel {
     RankNone = 0,
-    RankFirst = 1,
-    RankSecond = 2,
-    RankThird = 3,
-    RankFourth = 4,
-    RankFifth = 5,
-    RankSixth = 6
+    RankFirstM = 1,
+    RankFirstF = 2,
+    RankSecondM = 3,
+    RankSecondF = 4,
+    RankThirdM = 5,
+    RankThirdF = 6,
+    RankFourthM = 7,
+    RankFourthF = 8,
+    RankFifth = 9,
+    RankSixth = 10
 }
 
 impl_sql_enum_for!(RankLevel {
     RankNone = 0,
-    RankFirst = 1,
-    RankSecond = 2,
-    RankThird = 3,
-    RankFourth = 4,
-    RankFifth = 5,
-    RankSixth = 6
+    RankFirstM = 1,
+    RankFirstF = 2,
+    RankSecondM = 3,
+    RankSecondF = 4,
+    RankThirdM = 5,
+    RankThirdF = 6,
+    RankFourthM = 7,
+    RankFourthF = 8,
+    RankFifth = 9,
+    RankSixth = 10
 });
+
+impl core::convert::TryFrom<i32> for RankLevel {
+    type Error = &'static str;
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(RankLevel::RankNone),
+            1 => Ok(RankLevel::RankFirstM),
+            2 => Ok(RankLevel::RankFirstF),
+            3 => Ok(RankLevel::RankSecondM),
+            4 => Ok(RankLevel::RankSecondF),
+            5 => Ok(RankLevel::RankThirdM),
+            6 => Ok(RankLevel::RankThirdF),
+            7 => Ok(RankLevel::RankFourthM),
+            8 => Ok(RankLevel::RankFourthF),
+            9 => Ok(RankLevel::RankFifth),
+            10 => Ok(RankLevel::RankSixth),
+            _ => Err("invalid RankLevel"),
+        }
+    }
+}
+
+impl RankLevel {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RankLevel::RankNone => "",
+            RankLevel::RankFirstM => "RANK_FIRST_MALE",
+            RankLevel::RankFirstF => "RANK_FIRST_FEMALE",
+            RankLevel::RankSecondM => "RANK_SECOND_MALE",
+            RankLevel::RankSecondF => "RANK_SECOND_FEMALE",
+            RankLevel::RankThirdM => "RANK_THIRD_MALE",
+            RankLevel::RankThirdF => "RANK_THIRD_FEMALE",
+            RankLevel::RankFourthM => "RANK_FOURTH_MALE",
+            RankLevel::RankFourthF => "RANK_FOURTH_FEMALE",
+            RankLevel::RankFifth => "RANK_FIFTH",
+            RankLevel::RankSixth => "RANK_SIXTH"
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Methodology {
@@ -64,6 +113,30 @@ impl_sql_enum_for!(Methodology {
     VentureScout = 2,
     Rover = 3
 });
+
+impl Methodology {
+    pub fn as_color(&self) -> Color {
+        match self {
+            Methodology::Cub => Color::from_rgb_u8(255, 189, 89),
+            Methodology::Scout => Color::from_rgb_u8(175, 203, 7),
+            Methodology::VentureScout => Color::from_rgb_u8(18, 64, 147),
+            Methodology::Rover => Color::from_rgb_u8(227, 6, 19)
+        }
+    }
+}
+
+impl core::convert::TryFrom<i32> for Methodology {
+    type Error = &'static str;
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Methodology::Cub),
+            1 => Ok(Methodology::Scout),
+            2 => Ok(Methodology::VentureScout),
+            3 => Ok(Methodology::Rover),
+            _ => Err("invalid Methodology"),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 enum EntityType {
@@ -146,7 +219,7 @@ fn db_path() -> PathBuf {
     dir.join("database.db")
 }
 
-pub fn get_db() -> Result<Connection> {
+pub fn get_db() -> Result<Rc<RefCell<Connection>>> {
     let conn: Connection = Connection::open(db_path())?;
 
     conn.execute("PRAGMA foreign_keys = ON;", ())?;
@@ -187,7 +260,7 @@ pub fn get_db() -> Result<Connection> {
         ()
     )?;
 
-    Ok(conn)
+    Ok(Rc::new(RefCell::new(conn)))
 }
 
 pub fn insert_to_db(conn: &Connection, record: DatabaseRecord) -> Result<(), Box<dyn Error>> {
