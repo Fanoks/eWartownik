@@ -1,13 +1,26 @@
-import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView, StandardButton } from "std-widgets.slint";
 import { Title } from "title.slint";
+import { AddPersonPage } from "add_person.slint";
+
+export struct PersonData {
+    id: int,
+    name: string,
+    surname: string,
+    rank: string,
+    methodology: color
+}
 
 export component MainWindow inherits Window {
     title: "eWartownik";
-    icon: @image-url("images/logo.svg");
+    icon: @image-url("images/logo.png");
     width: 400px;
     height: 600px;
 
     in-out property <int> current_screen: 0; // 0 = main, 1 = persons, 2 = logs, 3 = setings
+    in-out property <[PersonData]> people;
+
+    callback add_person_request(string, string, int, int);
+    callback remove_person_request(int);
     
     function change_screen(index: int) {
         root.current_screen = index;
@@ -44,13 +57,52 @@ export component MainWindow inherits Window {
         }
 
         // -------------------------------
-        // Persos
-        if root.current_screen == 1: VerticalBox {
-            spacing: 5px;
+        // Persons
+        if root.current_screen == 1: Rectangle {
+            VerticalLayout {
+                spacing: 5px;
 
-            Title { text: @tr("PERSONEL_LIST"); }
-            ListView {}
-            Button { text: @tr("ADD_PERSON"); }
+                Title { text: @tr("PERSONEL_LIST"); }
+                ListView {
+                    for p in root.people: Rectangle {
+                        height: root.height * 0.05;
+                        background: p.methodology;
+                        
+                        Text {
+                            text: p.rank + " " + p.name + " " + p.surname;
+                        }
+
+                        Button {
+                            icon: @image-url("images/delete.svg");
+                            colorize-icon: true;
+                            x: parent.width - self.width - 2px;
+                            clicked => { remove_person_request(p.id) }
+                        }
+                    }
+                }
+                Button { text: @tr("ADD_PERSON"); clicked => { add_person_modal.visible = true; } }
+            }
+
+            add_person_modal := Rectangle {
+                visible: false;
+                width: root.width;
+                height: root.height;
+                y: 0;
+                background: #00000080;
+
+                AddPersonPage {
+                    x: (parent.width - self.width) / 2;
+                    
+                    submit => {
+                        root.add_person_request(self.name, self.surname, self.rank, self.methodology);
+                        add_person_modal.visible = false;
+                        self.name = "";
+                        self.surname = "";
+                        self.rank = 0;
+                        self.methodology = 0;
+                    }
+                }
+            }
         }
 
         // -------------------------------

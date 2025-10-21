@@ -1,0 +1,70 @@
+import { ListView, Button, VerticalBox, LineEdit, ComboBox } from "std-widgets.slint";
+
+export component AddPersonPage inherits Window {
+    width: 340px;
+    height: 380px;
+    title: @tr("ADD_PERSON");
+
+    in-out property <string> name;
+    in-out property <string> surname;
+    in-out property <int> rank;
+    in-out property <int> methodology;
+    property <bool> can_submit: !name.is-empty && !surname.is-empty;
+
+    callback submit();
+
+    Rectangle {
+        border-width: 2px;
+        border-color: white;
+
+        Rectangle {
+            height: 60px;
+        }
+
+        VerticalBox {
+            spacing: 8px;
+            padding: 12px;
+
+            Text { text: @tr("INPUT_NAME"); }
+            LineEdit { text <=> root.name; }
+
+            Text { text: @tr("INPUT_SURNAME"); }
+            LineEdit { text <=> root.surname; }
+
+            Text { text: @tr("RANK"); }
+            ComboBox {
+                current-index <=> root.rank;
+                model: [
+                    "RANK_NONE",
+                    "RANK_FIRST_MALE",
+                    "RANK_FIRST_FEMALE",
+                    "RANK_SECOND_MALE",
+                    "RANK_SECOND_FEMALE",
+                    "RANK_THIRD_MALE",
+                    "RANK_THIRD_FEMALE",
+                    "RANK_FOURTH_MALE",
+                    "RANK_FOURTH_FEMALE",
+                    "RANK_FIFTH",
+                    "RANK_SIXTH"
+                ];
+            }
+
+            Text { text: @tr("METHODOLOGY"); }
+            ComboBox {
+                current-index <=> root.methodology;
+                model: [
+                    "CUB",
+                    "SCOUT",
+                    "VENTURESCOUT",
+                    "ROVER"
+                ];
+            }
+
+            Button {
+                text: @tr("ADD_PERSON");
+                enabled: can_submit;
+                clicked => { root.submit(); }
+            }
+        }
+    }
+}
