@@ -68,3 +68,37 @@ export component AddPersonPage inherits Window {
         }
     }
 }
+
+export component AddGroupPage inherits Window {
+    width: 340px;
+    height: 180px;
+    title: @tr("ADD_GROUP");
+
+    in-out property <string> name;
+    property <bool> can_submit: !name.is-empty;
+
+    callback submit();
+
+    Rectangle {
+        border-width: 2px;
+        border-color: white;
+
+        Rectangle {
+            height: 60px;
+        }
+
+        VerticalBox {
+            spacing: 8px;
+            padding: 12px;
+
+            Text { text: @tr("INPUT_NAME"); }
+            LineEdit { text <=> root.name; }
+
+            Button {
+                text: @tr("ADD_GROUP");
+                enabled: can_submit;
+                clicked => { root.submit(); }
+            }
+        }
+    }
+}

@@ -1,6 +1,7 @@
 import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView, StandardButton } from "std-widgets.slint";
 import { Title } from "title.slint";
-import { AddPersonPage } from "add_person.slint";
+import { AddPersonPage, AddGroupPage } from "add_person.slint";
+import "./../assets/fonts/Quicksand/Quicksand-VariableFont_wght.ttf";
 
 export struct PersonData {
     id: int,
@@ -10,16 +11,25 @@ export struct PersonData {
     methodology: color
 }
 
+export struct GroupData {
+    id: int,
+    name: string,
+    members: [PersonData]
+}
+
 export component MainWindow inherits Window {
     title: "eWartownik";
-    icon: @image-url("images/logo.png");
+    icon: @image-url("./../assets/images/logo.png");
+    default-font-family: "Quicksand-Bold";
     width: 400px;
     height: 600px;
 
     in-out property <int> current_screen: 0; // 0 = main, 1 = persons, 2 = logs, 3 = setings
     in-out property <[PersonData]> people;
+    in-out property <[GroupData]> groups;
 
     callback add_person_request(string, string, int, int);
+    callback add_group_request(string);
     callback remove_person_request(int);
     
     function change_screen(index: int) {
@@ -59,6 +69,7 @@ export component MainWindow inherits Window {
         // -------------------------------
         // Persons
         if root.current_screen == 1: Rectangle {
+            
             VerticalLayout {
                 spacing: 5px;
 
@@ -73,14 +84,30 @@ export component MainWindow inherits Window {
                         }
 
                         Button {
-                            icon: @image-url("images/delete.svg");
+                            icon: @image-url("./../assets/images/delete.svg");
                             colorize-icon: true;
                             x: parent.width - self.width - 2px;
                             clicked => { remove_person_request(p.id) }
                         }
                     }
                 }
+                Title { text: @tr("GROUP_LIST"); }
+                ListView {
+                    for g in groups: Rectangle {
+                        height: root.height * 0.05;
+                        
+                        VerticalBox {
+                            Text { text: g.name; }
+
+                            for m in g.members: Text {
+                                text: m.rank + " " + m.name + " " + m.surname;
+                                font-size: 12px;
+                            }
+                        }
+                    }
+                }
                 Button { text: @tr("ADD_PERSON"); clicked => { add_person_modal.visible = true; } }
+                Button { text: @tr("ADD_GROUP"); clicked => { add_group_modal.visible = true; } }
             }
 
             add_person_modal := Rectangle {
@@ -100,6 +127,24 @@ export component MainWindow inherits Window {
                         self.surname = "";
                         self.rank = 0;
                         self.methodology = 0;
+                    }
+                }
+            }
+
+            add_group_modal := Rectangle {
+                visible: false;
+                width: root.width;
+                height: root.height;
+                y: 0;
+                background: #00000080;
+
+                AddGroupPage {
+                    x: (parent.width - self.width) / 2;
+                    
+                    submit => {
+                        root.add_group_request(self.name);
+                        add_group_modal.visible = false;
+                        self.name = "";
                     }
                 }
             }
@@ -133,26 +178,26 @@ export component MainWindow inherits Window {
                 spacing: 0px;
 
                 nav_btn1 := Button {
-                    icon: @image-url("images/home.svg");
+                    icon: @image-url("./../assets/images/home.svg");
                     colorize-icon: true;
                     checkable: true;
                     checked: true;
                     clicked => { change_screen(0); }
                 }
                 nav_btn2 := Button {
-                    icon: @image-url("images/group.svg");
+                    icon: @image-url("./../assets/images/group.svg");
                     colorize-icon: true;
                     checkable: true;
                     clicked => { change_screen(1); }
                 }
                 nav_btn3 := Button {
-                    icon: @image-url("images/script.svg");
+                    icon: @image-url("./../assets/images/script.svg");
                     colorize-icon: true;
                     checkable: true;
                     clicked => { change_screen(2); }
                 }
                 nav_btn4 := Button {
-                    icon: @image-url("images/cog.svg");
+                    icon: @image-url("./../assets/images/cog.svg");
                     colorize-icon: true;
                     checkable: true;
                     clicked => { change_screen(3); }
