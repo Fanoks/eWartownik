@@ -25,8 +25,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         move || {
             let conn_ref = conn_rc.borrow();
             let app = app_weak.unwrap();
-            if let Ok(person) = db_operations::get_person(&conn_ref) {
-                let model: Vec<_> = person
+
+            // Persons
+            if let Ok(mut person) = db_operations::get_person(&conn_ref) {
+                person.sort_by(|a, b| {
+                    a.methodology.cmp(&b.methodology)
+                                 .then_with(|| a.surname.cmp(&b.surname))
+                                 .then_with(|| a.name.cmp(&b.name))
+                });
+
+                let persons_model: Vec<_> = person
                     .into_iter()
                     .map(|p| PersonData {
                         id: p.id,
@@ -37,7 +45,31 @@ fn main() -> Result<(), Box<dyn Error>> {
                     })
                     .collect();
 
-                app.set_people(ModelRc::new(VecModel::from(model)));
+                app.set_people(ModelRc::new(VecModel::from(persons_model)));
+            }
+
+            // Groups
+            if let Ok(group) = db_operations::get_group_with_members(&conn_ref) {
+                let groups_model: Vec<_> = group
+                    .into_iter()
+                    .map(|g| GroupData {
+                        id: g.id,
+                        name: SharedString::from(g.name),
+                        members: ModelRc::new(VecModel::from(g.members
+                            .into_iter()
+                            .map(|m| PersonData {
+                                id: m.id,
+                                name: SharedString::from(m.name),
+                                surname: SharedString::from(m.surname),
+                                rank: SharedString::from(m.rank_level.as_str()),
+                                methodology: m.methodology.as_color()
+                            })
+                            .collect::<Vec<_>>()
+                        ))
+                    })
+                    .collect();
+
+                app.set_groups(ModelRc::new(VecModel::from(groups_model)));
             }
         }
     };
@@ -91,7 +123,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
-        {
+    {
+        let conn_rc = conn.clone();
+        let refresh_clone = refresh_personel.clone();
+
+        app.on_add_group_request({
+            move |name| {
+                let group: db_operations::Group = db_operations::Group {
+                    id: 0,
+                    name: name.to_string()
+                };
+
+                // Keep copies for logging after `group` is moved into the DatabaseRecord
+                let group_name = group.name.clone();
+
+                {
+                    let mut conn_ref = conn_rc.borrow_mut();
+                    if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::Group(group)) {
+                        eprintln!("Error during insertion of group: {}", e);
+                        return;
+                    }
+                }
+
+                refresh_clone();
+            }
+        });
+    }
+
+    {
         let conn_rc = conn.clone();
         let refresh_clone = refresh_personel.clone();
 

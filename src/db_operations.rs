@@ -99,7 +99,7 @@ impl RankLevel {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
 pub enum Methodology {
     Cub = 0,
     Scout = 1,
@@ -138,6 +138,18 @@ impl core::convert::TryFrom<i32> for Methodology {
     }
 }
 
+impl Ord for Methodology {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (*self as i32).cmp(&(*other as i32))
+    }
+}
+
+impl PartialOrd for Methodology {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 enum EntityType {
     Person = 0,
@@ -173,6 +185,13 @@ pub struct Person {
 pub struct Group {
     pub id: i32,
     pub name: String
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupWithMembers {
+    pub id: i32,
+    pub name: String,
+    pub members: Vec<Person>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -420,6 +439,45 @@ pub fn get_group_member(conn: &Connection) -> Result<Vec<(i32, i32)>, Box<dyn Er
     let group_members: Result<Vec<(i32, i32)>, _> = group_members_iter.collect();
 
     Ok(group_members?)
+}
+
+pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>, Box<dyn Error>> {
+    let mut groups_stmt = conn.prepare("SELECT `id` `name` FROM `Group`;")?;
+    let groups_iter = groups_stmt.query_map([], |row| {
+        Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?))
+    })?;
+
+    let mut groups_map: std::collections::HashMap<i32, GroupWithMembers> = std::collections::HashMap::new();
+
+    for group in groups_iter {
+        let (id, name) = group?;
+        groups_map.insert(id, GroupWithMembers {
+            id, name, members: Vec::new()
+        });
+    }
+
+    let mut members_stmt = conn.prepare("SELECT `gm`.`group_id`, `p`.`id`, `p`.`name`, `p`.`surname`, `p`.`rank`, `p`.`methodology` FROM `GroupMembers` `gm` JOIN `Person` `p` ON `gm`.`person_id` = `p`.`id`;")?;
+    let members_iter = members_stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, i32>(0)?,
+            Person {
+                id: row.get(1)?,
+                name: row.get(2)?,
+                surname: row.get(3)?,
+                rank_level: RankLevel::try_from(row.get::<_, i32>(4)?).unwrap_or_else(|_| RankLevel::RankNone),
+                methodology: Methodology::try_from(row.get::<_, i32>(5)?).unwrap_or_else(|_| Methodology::Cub)
+            }
+        ))
+    })?;
+
+    for member in members_iter {
+        let (group_id, person) = member?;
+        if let Some(group) = groups_map.get_mut(&group_id) {
+            group.members.push(person);
+        }
+    }
+
+    Ok(groups_map.into_values().collect())
 }
 
 pub fn get_log(conn: &Connection) -> Result<Vec<Log>, Box<dyn Error>> {
