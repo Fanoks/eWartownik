@@ -279,6 +279,20 @@ pub fn get_db() -> Result<Rc<RefCell<Connection>>> {
         ()
     )?;
 
+    let count: i32 = conn.query_row("SELECT COUNT(`id`) FROM `Group`;", [], |row| row.get(0))?;
+
+    if count == 0 {
+        conn.execute(
+            "INSERT INTO `Group`(`id`, `name`) VALUES
+                (1, 'Camp'),
+                (2, 'Cub'),
+                (3, 'Scout'),
+                (4, 'Venture Scout'),
+                (5, 'Rover');",
+            ()
+        )?;
+    }
+
     Ok(Rc::new(RefCell::new(conn)))
 }
 
@@ -296,6 +310,19 @@ fn insert_person(conn: &Connection, person: &Person) -> Result<(), Box<dyn Error
         "INSERT INTO `Person`(`name`, `surname`, `rank_level`, `methodology`) VALUES(?1, ?2, ?3, ?4);",
         (&person.name, &person.surname, person.rank_level as i32, person.methodology as i32)
     )?;
+
+    let person_id: i32 = conn.last_insert_rowid() as i32;
+    let group_id: i32 = person.methodology as i32 + 2; // +2 beacouse db start from 1 and 1 is reserved for everyone
+
+    conn.execute(
+        "INSERT INTO `GroupMembers`(`group_id`, `person_id`) VALUES (?1, ?2);",
+        (group_id, person_id)
+    )?;
+    conn.execute(
+        "INSERT INTO `GroupMembers`(`group_id`, `person_id`) VALUES (1, ?1);",
+        (person_id,)
+    )?;
+
     Ok(())
 }
 
@@ -442,7 +469,7 @@ pub fn get_group_member(conn: &Connection) -> Result<Vec<(i32, i32)>, Box<dyn Er
 }
 
 pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>, Box<dyn Error>> {
-    let mut groups_stmt = conn.prepare("SELECT `id` `name` FROM `Group`;")?;
+    let mut groups_stmt = conn.prepare("SELECT `id`, `name` FROM `Group`;")?;
     let groups_iter = groups_stmt.query_map([], |row| {
         Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?))
     })?;
@@ -456,7 +483,11 @@ pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>
         });
     }
 
-    let mut members_stmt = conn.prepare("SELECT `gm`.`group_id`, `p`.`id`, `p`.`name`, `p`.`surname`, `p`.`rank`, `p`.`methodology` FROM `GroupMembers` `gm` JOIN `Person` `p` ON `gm`.`person_id` = `p`.`id`;")?;
+    let mut members_stmt = conn.prepare(
+        "SELECT `gm`.`group_id`, `p`.`id`, `p`.`name`, `p`.`surname`, `p`.`rank_level`, `p`.`methodology`
+         FROM `GroupMembers` `gm`
+         JOIN `Person` `p` ON `gm`.`person_id` = `p`.`id`;"
+    )?;
     let members_iter = members_stmt.query_map([], |row| {
         Ok((
             row.get::<_, i32>(0)?,

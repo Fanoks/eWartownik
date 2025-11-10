@@ -25,60 +25,70 @@ fn main() -> Result<(), Box<dyn Error>> {
         move || {
             let conn_ref = conn_rc.borrow();
             let app = app_weak.unwrap();
-
-            // Persons
-            if let Ok(mut person) = db_operations::get_person(&conn_ref) {
-                person.sort_by(|a, b| {
-                    a.methodology.cmp(&b.methodology)
-                                 .then_with(|| a.surname.cmp(&b.surname))
-                                 .then_with(|| a.name.cmp(&b.name))
+            if let Ok(mut persons) = db_operations::get_person(&conn_ref) {
+                // Sort in Rust: methodology, surname (case-insensitive), name (case-insensitive)
+                persons.sort_by(|a, b| {
+                    use std::cmp::Ordering;
+                    let meth_cmp = (a.methodology as i32).cmp(&(b.methodology as i32));
+                    if meth_cmp != Ordering::Equal { return meth_cmp; }
+                    let sur_cmp = a.surname.to_lowercase().cmp(&b.surname.to_lowercase());
+                    if sur_cmp != Ordering::Equal { return sur_cmp; }
+                    a.name.to_lowercase().cmp(&b.name.to_lowercase())
                 });
 
-                let persons_model: Vec<_> = person
-                    .into_iter()
-                    .map(|p| PersonData {
+                let model: Vec<_> = persons.into_iter().map(|p| PersonData {
+                    id: p.id,
+                    name: SharedString::from(p.name),
+                    surname: SharedString::from(p.surname),
+                    rank: SharedString::from(p.rank_level.as_str()),
+                    methodology: p.methodology.as_color(),
+                }).collect();
+                app.set_people(ModelRc::new(VecModel::from(model)));
+            }
+        }
+    };
+
+    let refresh_groups = {
+        let app_weak = app.as_weak();
+        let conn_rc = conn.clone();
+
+        move || {
+            let conn_ref = conn_rc.borrow();
+            let app = app_weak.unwrap();
+            if let Ok(mut groups) = db_operations::get_group_with_members(&conn_ref) {
+                // Order groups by id
+                groups.sort_by_key(|g| g.id);
+                let groups_model: Vec<_> = groups.into_iter().map(|mut g| {
+                    // Sort each group's members by methodology, surname, name
+                    g.members.sort_by(|a, b| {
+                        use std::cmp::Ordering;
+                        let meth_cmp = (a.methodology as i32).cmp(&(b.methodology as i32));
+                        if meth_cmp != Ordering::Equal { return meth_cmp; }
+                        let sur_cmp = a.surname.to_lowercase().cmp(&b.surname.to_lowercase());
+                        if sur_cmp != Ordering::Equal { return sur_cmp; }
+                        a.name.to_lowercase().cmp(&b.name.to_lowercase())
+                    });
+                    let members_vec: Vec<_> = g.members.into_iter().map(|p| PersonData {
                         id: p.id,
                         name: SharedString::from(p.name),
                         surname: SharedString::from(p.surname),
                         rank: SharedString::from(p.rank_level.as_str()),
-                        methodology: p.methodology.as_color()
-                    })
-                    .collect();
-
-                app.set_people(ModelRc::new(VecModel::from(persons_model)));
-            }
-
-            // Groups
-            if let Ok(group) = db_operations::get_group_with_members(&conn_ref) {
-                let groups_model: Vec<_> = group
-                    .into_iter()
-                    .map(|g| GroupData {
-                        id: g.id,
-                        name: SharedString::from(g.name),
-                        members: ModelRc::new(VecModel::from(g.members
-                            .into_iter()
-                            .map(|m| PersonData {
-                                id: m.id,
-                                name: SharedString::from(m.name),
-                                surname: SharedString::from(m.surname),
-                                rank: SharedString::from(m.rank_level.as_str()),
-                                methodology: m.methodology.as_color()
-                            })
-                            .collect::<Vec<_>>()
-                        ))
-                    })
-                    .collect();
-
+                        methodology: p.methodology.as_color(),
+                    }).collect();
+                    GroupData { id: g.id, name: SharedString::from(g.name), members: ModelRc::new(VecModel::from(members_vec)) }
+                }).collect();
                 app.set_groups(ModelRc::new(VecModel::from(groups_model)));
             }
         }
     };
 
     refresh_personel();
+    refresh_groups();
 
     {
-        let conn_rc = conn.clone();
-        let refresh_clone = refresh_personel.clone();
+    let conn_rc = conn.clone();
+    let refresh_clone = refresh_personel.clone();
+    let refresh_groups_clone = refresh_groups.clone();
 
         app.on_add_person_request({
             move |name, surname, rank, methodology| {
@@ -106,10 +116,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     methodology: methodology_enum
                 };
 
-                // Keep copies for logging after `person` is moved into the DatabaseRecord
-                let person_name = person.name.clone();
-                let person_surname = person.surname.clone();
-
                 {
                     let mut conn_ref = conn_rc.borrow_mut();
                     if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::Person(person)) {
@@ -119,60 +125,29 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
 
                 refresh_clone();
+                // Members assignments may change groups content
+                refresh_groups_clone();
             }
         });
     }
 
     {
         let conn_rc = conn.clone();
-        let refresh_clone = refresh_personel.clone();
+        let refresh_groups_clone = refresh_groups.clone();
 
         app.on_add_group_request({
             move |name| {
-                let group: db_operations::Group = db_operations::Group {
-                    id: 0,
-                    name: name.to_string()
-                };
-
-                // Keep copies for logging after `group` is moved into the DatabaseRecord
-                let group_name = group.name.clone();
+                let group = db_operations::Group { id: 0, name: name.to_string() };
 
                 {
                     let mut conn_ref = conn_rc.borrow_mut();
                     if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::Group(group)) {
-                        eprintln!("Error during insertion of group: {}", e);
+                        eprintln!("Error during insertion group: {}", e);
                         return;
                     }
                 }
 
-                refresh_clone();
-            }
-        });
-    }
-
-    {
-        let conn_rc = conn.clone();
-        let refresh_clone = refresh_personel.clone();
-
-        app.on_remove_person_request({
-            move |id| {
-                let person: db_operations::Person = db_operations::Person {
-                    id: id,
-                    name: "".to_string(),
-                    surname: "".to_string(),
-                    rank_level: db_operations::RankLevel::RankNone,
-                    methodology: db_operations::Methodology::Cub
-                };
-
-                {
-                    let mut conn_ref = conn_rc.borrow_mut();
-                    if let Err(e) = db_operations::delete_from_db(&mut *conn_ref, db_operations::DatabaseRecord::Person(person)) {
-                        eprintln!("Error during deleting person: {}", e);
-                        return;
-                    }
-                }
-
-                refresh_clone();
+                refresh_groups_clone();
             }
         });
     }
