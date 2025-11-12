@@ -11,19 +11,25 @@ export component AddPersonPage inherits Window {
     in-out property <int> methodology;
     property <bool> can_submit: !name.is-empty && !surname.is-empty;
 
+    callback exit();
     callback submit();
 
     Rectangle {
         border-width: 2px;
         border-color: white;
 
-        Rectangle {
-            height: 60px;
+        Button {
+            x: parent.width - 60px;
+            y: 10px;
+            icon: @image-url("./../assets/images/close.svg");
+            colorize-icon: true;
+            clicked => { root.exit(); }
         }
 
         VerticalBox {
             spacing: 8px;
             padding: 12px;
+            padding-top: 30px;
 
             Text { text: @tr("INPUT_NAME"); }
             LineEdit { text <=> root.name; }
@@ -77,19 +83,25 @@ export component AddGroupPage inherits Window {
     in-out property <string> name;
     property <bool> can_submit: !name.is-empty;
 
+    callback exit();
     callback submit();
 
     Rectangle {
         border-width: 2px;
         border-color: white;
 
-        Rectangle {
-            height: 60px;
+        Button {
+            x: parent.width - 60px;
+            y: 10px;
+            icon: @image-url("./../assets/images/close.svg");
+            colorize-icon: true;
+            clicked => { root.exit(); }
         }
 
         VerticalBox {
             spacing: 8px;
             padding: 12px;
+            padding-top: 30px;
 
             Text { text: @tr("INPUT_NAME"); }
             LineEdit { text <=> root.name; }

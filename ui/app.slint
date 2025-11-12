@@ -105,14 +105,23 @@ export component MainWindow inherits Window {
 
                 AddPersonPage {
                     x: (parent.width - self.width) / 2;
+                    y: 50px;
                     
-                    submit => {
-                        root.add_person_request(self.name, self.surname, self.rank, self.methodology);
+                    function clear() {
                         add_person_modal.visible = false;
                         self.name = "";
                         self.surname = "";
                         self.rank = 0;
                         self.methodology = 0;
+                    }
+
+                    exit => {
+                        clear();
+                    }
+
+                    submit => {
+                        root.add_person_request(self.name, self.surname, self.rank, self.methodology);
+                        clear();
                     }
                 }
             }
@@ -126,11 +135,20 @@ export component MainWindow inherits Window {
 
                 AddGroupPage {
                     x: (parent.width - self.width) / 2;
+                    y: 150px;
                     
-                    submit => {
-                        root.add_group_request(self.name);
+                    function clear() {
                         add_group_modal.visible = false;
                         self.name = "";
+                    }
+
+                    exit => {
+                        clear();
+                    }
+
+                    submit => {
+                        root.add_group_request(self.name);
+                        clear();
                     }
                 }
             }
