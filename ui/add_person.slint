@@ -1,4 +1,5 @@
 import { ListView, Button, VerticalBox, LineEdit, ComboBox } from "std-widgets.slint";
+import { PersonData, GroupData } from "types.slint";
 
 export component AddPersonPage inherits Window {
     width: 340px;
@@ -105,6 +106,60 @@ export component AddGroupPage inherits Window {
 
             Text { text: @tr("INPUT_NAME"); }
             LineEdit { text <=> root.name; }
+
+            Button {
+                text: @tr("ADD_GROUP");
+                enabled: can_submit;
+                clicked => { root.submit(); }
+            }
+        }
+    }
+}
+
+export component AddPerosnToGroupPage inherits Window {
+    width: 340px;
+    height: 180px;
+    title: @tr("ADD_PERSON_TO_GROUP");
+
+    in-out property <[string]> persons;
+    in-out property <[string]> groups;
+
+    in-out property <int> person;
+    in-out property <int> group;
+    property <bool> can_submit: true;
+
+    callback check();
+    callback exit();
+    callback submit();
+
+    Rectangle {
+        border-width: 2px;
+        border-color: white;
+
+        Button {
+            x: parent.width - 60px;
+            y: 10px;
+            icon: @image-url("./../assets/images/close.svg");
+            colorize-icon: true;
+            clicked => { root.exit(); }
+        }
+
+        VerticalBox {
+            spacing: 8px;
+            padding: 12px;
+            padding-top: 30px;
+
+            Text { text: @tr("CHOOSE_PEROSN"); }
+            ComboBox {
+                current-index <=> root.person;
+                model: persons;
+            }
+
+            Text { text: @tr("CHOOSE_GROUP"); }
+            ComboBox {
+                current-index <=> root.group;
+                model: groups;
+            }
 
             Button {
                 text: @tr("ADD_GROUP");

@@ -1,6 +1,6 @@
 import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView, StandardButton } from "std-widgets.slint";
 import { Title } from "title.slint";
-import { AddPersonPage, AddGroupPage } from "add_person.slint";
+import { AddPersonPage, AddGroupPage, AddPerosnToGroupPage } from "add_person.slint";
 import { GroupsPanel } from "groups_panel.slint";
 import { PersonData, GroupData } from "types.slint";
 import "./../assets/fonts/Quicksand/static/Quicksand-Regular.ttf";
@@ -17,8 +17,12 @@ export component MainWindow inherits Window {
     in-out property <[PersonData]> people;
     in-out property <[GroupData]> groups;
 
+    in-out property <[string]> persons_to_group;
+    in-out property <[string]> groups_to_group;
+
     callback add_person_request(string, string, int, int);
     callback add_group_request(string);
+    callback add_person_to_group_request(int, int);
     callback remove_person_request(int);
     
     function change_screen(index: int) {
@@ -94,6 +98,7 @@ export component MainWindow inherits Window {
 
                 Button { text: @tr("ADD_PERSON"); clicked => { add_person_modal.visible = true; } }
                 Button { text: @tr("ADD_GROUP"); clicked => { add_group_modal.visible = true; } }
+                Button { text: @tr("ADD_PERSON_TO_GROUP"); clicked => {add_person_to_group_modal.visible = true} }
             }
 
             add_person_modal := Rectangle {
@@ -149,6 +154,31 @@ export component MainWindow inherits Window {
                     submit => {
                         root.add_group_request(self.name);
                         clear();
+                    }
+                }
+            }
+
+            add_person_to_group_modal := Rectangle {
+                visible: false;
+                width: root.width;
+                height: root.height;
+                y: 0;
+                background: #00000080;
+
+                AddPerosnToGroupPage {
+                    x: (parent.width - self.width) / 2;
+                    y: 150px;
+
+                    persons <=> persons_to_group;
+                    groups <=> groups_to_group;
+
+                    exit => {
+                        add_person_to_group_modal.visible = false;
+                    }
+
+                    submit => {
+                        root.add_person_to_group_request(self.person, self.group);
+                        add_person_to_group_modal.visible = false;
                     }
                 }
             }

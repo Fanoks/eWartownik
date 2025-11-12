@@ -18,36 +18,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     slint::select_bundled_translation("en")?;
 
-    let refresh_personel = {
-        let app_weak = app.as_weak();
-        let conn_rc = conn.clone();
-
-        move || {
-            let conn_ref = conn_rc.borrow();
-            let app = app_weak.unwrap();
-            if let Ok(mut persons) = db_operations::get_person(&conn_ref) {
-                // Sort in Rust: methodology, surname (case-insensitive), name (case-insensitive)
-                persons.sort_by(|a, b| {
-                    use std::cmp::Ordering;
-                    let meth_cmp = (a.methodology as i32).cmp(&(b.methodology as i32));
-                    if meth_cmp != Ordering::Equal { return meth_cmp; }
-                    let sur_cmp = a.surname.to_lowercase().cmp(&b.surname.to_lowercase());
-                    if sur_cmp != Ordering::Equal { return sur_cmp; }
-                    a.name.to_lowercase().cmp(&b.name.to_lowercase())
-                });
-
-                let model: Vec<_> = persons.into_iter().map(|p| PersonData {
-                    id: p.id,
-                    name: SharedString::from(p.name),
-                    surname: SharedString::from(p.surname),
-                    rank: SharedString::from(p.rank_level.as_str()),
-                    methodology: p.methodology.as_color(),
-                }).collect();
-                app.set_people(ModelRc::new(VecModel::from(model)));
-            }
-        }
-    };
-
     let refresh_groups = {
         let app_weak = app.as_weak();
         let conn_rc = conn.clone();
@@ -56,6 +26,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             let conn_ref = conn_rc.borrow();
             let app = app_weak.unwrap();
             if let Ok(mut groups) = db_operations::get_group_with_members(&conn_ref) {
+                let persons_list: Vec<SharedString> = vec![];
+                let groups_list: Vec<SharedString> = vec![];
+
                 // Order groups by id
                 groups.sort_by_key(|g| g.id);
                 let groups_model: Vec<_> = groups.into_iter().map(|mut g| {
@@ -73,21 +46,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                         name: SharedString::from(p.name),
                         surname: SharedString::from(p.surname),
                         rank: SharedString::from(p.rank_level.as_str()),
-                        methodology: p.methodology.as_color(),
+                        methodology: p.methodology.as_color()
                     }).collect();
                     GroupData { id: g.id, name: SharedString::from(g.name), members: ModelRc::new(VecModel::from(members_vec)) }
                 }).collect();
                 app.set_groups(ModelRc::new(VecModel::from(groups_model)));
+                //TODO add loop for adding persons to persons_list and groups_list
+                app.set_persons_to_group(ModelRc::new(VecModel::from(persons_list)));
             }
         }
     };
 
-    refresh_personel();
     refresh_groups();
 
     {
     let conn_rc = conn.clone();
-    let refresh_clone = refresh_personel.clone();
     let refresh_groups_clone = refresh_groups.clone();
 
         app.on_add_person_request({
@@ -124,8 +97,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
 
-                refresh_clone();
-                // Members assignments may change groups content
                 refresh_groups_clone();
             }
         });
@@ -143,6 +114,25 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let mut conn_ref = conn_rc.borrow_mut();
                     if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::Group(group)) {
                         eprintln!("Error during insertion group: {}", e);
+                        return;
+                    }
+                }
+
+                refresh_groups_clone();
+            }
+        });
+    }
+
+    {
+        let conn_rc = conn.clone();
+        let refresh_groups_clone = refresh_groups.clone();
+
+        app.on_add_person_to_group_request({
+            move |person_id, group_id| {
+                {
+                    let mut conn_ref = conn_rc.borrow_mut();
+                    if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::GroupMembers(group_id, person_id)) {
+                        eprintln!("Error during insertion of relation: {}", e);
                         return;
                     }
                 }
