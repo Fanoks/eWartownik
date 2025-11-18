@@ -1,5 +1,39 @@
-import { ListView, Button, VerticalBox, LineEdit, ComboBox } from "std-widgets.slint";
+import { ListView, Button, VerticalBox, LineEdit, ComboBox, HorizontalBox } from "std-widgets.slint";
 import { PersonData, GroupData } from "types.slint";
+
+// Custom lightweight dropdown without timer polling
+export component GroupComboBox inherits VerticalBox {
+    in-out property <[string]> entries;
+    in-out property <int> current: -1;
+    callback changed(int);
+    property <bool> open: false;
+
+    Rectangle {
+        height: 28px;
+        width: parent.width;
+        background: #252525;
+        border-radius: 4px;
+        HorizontalBox {
+            spacing: 6px;
+            padding: 4px;
+            if current >= 0 && current < entries.length: Text { text: entries[current]; vertical-alignment: center; }
+            if !(current >= 0 && current < entries.length): Text { text: @tr("SELECT_GROUP"); vertical-alignment: center; }
+            Text { text: open ? "▲" : "▼"; vertical-alignment: center; }
+        }
+        TouchArea { clicked => { open = !open; } }
+    }
+    if open: VerticalBox {
+        spacing: 4px;
+        for e[i] in entries: Rectangle {
+            height: 26px;
+            width: parent.width;
+            background: i == current ? #333333 : #252525;
+            border-radius: 4px;
+            Text { text: e; vertical-alignment: center; padding-left: 6px; }
+            TouchArea { clicked => { current = i; open = false; root.changed(current); } }
+        }
+    }
+}
 
 export component AddPersonPage inherits Window {
     width: 340px;
@@ -118,19 +152,24 @@ export component AddGroupPage inherits Window {
 
 export component AddPerosnToGroupPage inherits Window {
     width: 340px;
-    height: 180px;
+    height: 320px;
     title: @tr("ADD_PERSON_TO_GROUP");
 
-    in-out property <[string]> persons;
-    in-out property <[string]> groups;
+    in-out property <[PersonData]> persons; // original full list
+    in-out property <[PersonData]> filtered_persons; // filtered list
+    in-out property <[GroupData]> groups;
+    in-out property <[string]> groups_names;
 
     in-out property <int> person;
     in-out property <int> group;
     property <bool> can_submit: true;
 
+    callback group_selection_changed(int);
+
     callback check();
     callback exit();
     callback submit();
+
 
     Rectangle {
         border-width: 2px;
@@ -149,21 +188,43 @@ export component AddPerosnToGroupPage inherits Window {
             padding: 12px;
             padding-top: 30px;
 
-            Text { text: @tr("CHOOSE_PEROSN"); }
-            ComboBox {
-                current-index <=> root.person;
-                model: persons;
-            }
-
             Text { text: @tr("CHOOSE_GROUP"); }
-            ComboBox {
-                current-index <=> root.group;
-                model: groups;
+            GroupComboBox {
+                entries <=> groups_names;
+                current <=> root.group;
+                changed => { root.group_selection_changed(root.group); }
+            }
+            // Auto-filter handled by component-level group-changed handler below
+
+            Text { text: @tr("CHOOSE_PEROSN"); }
+            if filtered_persons.length == 0: Rectangle {
+                width: parent.width - 24px;
+                height: 140px;
+                Text { text: @tr("NO_AVAILABLE_PERSONS"); color: #999999; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            if filtered_persons.length > 0: ListView {
+                width: parent.width - 24px;
+                height: 140px;
+                for p[index] in filtered_persons: Rectangle {
+                    height: 32px;
+                    background: index == root.person ? #333333 : #252525;
+                    border-radius: 6px;
+                    padding: 4px;
+                    HorizontalBox {
+                        spacing: 8px;
+                        Rectangle {
+                            width: 14px; height: 14px; border-radius: 7px;
+                            background: p.methodology;
+                        }
+                        Text { text: p.rank + " " + p.surname + " " + p.name; vertical-alignment: center; }
+                    }
+                    TouchArea { clicked => { root.person = index; } }
+                }
             }
 
             Button {
                 text: @tr("ADD_GROUP");
-                enabled: can_submit;
+                enabled: can_submit && root.person >= 0 && root.group >= 0;
                 clicked => { root.submit(); }
             }
         }

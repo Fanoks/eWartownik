@@ -2,7 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::error::Error;
-use slint::{ModelRc, VecModel, SharedString};
+use slint::{ModelRc, VecModel, SharedString, Model};
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::cell::RefCell;
 use rusqlite::Connection;
@@ -18,16 +19,25 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     slint::select_bundled_translation("en")?;
 
+    // Data caches for filtering persons by selected group
+    let selection_groups: Rc<RefCell<Vec<GroupData>>> = Rc::new(RefCell::new(Vec::new()));
+    let all_persons_for_selection: Rc<RefCell<Vec<PersonData>>> = Rc::new(RefCell::new(Vec::new()));
+
     let refresh_groups = {
         let app_weak = app.as_weak();
         let conn_rc = conn.clone();
+        let selection_groups_rc = selection_groups.clone();
+        let all_persons_rc = all_persons_for_selection.clone();
 
         move || {
             let conn_ref = conn_rc.borrow();
             let app = app_weak.unwrap();
             if let Ok(mut groups) = db_operations::get_group_with_members(&conn_ref) {
-                let persons_list: Vec<SharedString> = vec![];
-                let groups_list: Vec<SharedString> = vec![];
+                // We'll populate persons_list from the special group with id = 1 ("Camp") which contains all persons.
+                // groups_list will contain all group names ordered by id.
+                let mut persons_list: Vec<PersonData> = Vec::new();
+                let mut groups_list: Vec<GroupData> = Vec::new();
+                let mut group_names: Vec<SharedString> = Vec::new();
 
                 // Order groups by id
                 groups.sort_by_key(|g| g.id);
@@ -48,16 +58,99 @@ fn main() -> Result<(), Box<dyn Error>> {
                         rank: SharedString::from(p.rank_level.as_str()),
                         methodology: p.methodology.as_color()
                     }).collect();
+
+                    // Capture global persons list from group id 1 if not yet filled
+                    if g.id == 1 && persons_list.is_empty() {
+                        // Copy all members into persons_list preserving order and colors
+                        for m in &members_vec {
+                            persons_list.push(PersonData {
+                                id: m.id,
+                                name: m.name.clone(),
+                                surname: m.surname.clone(),
+                                rank: m.rank.clone(),
+                                methodology: m.methodology,
+                            });
+                        }
+                    }
+
+                    // Add user-manageable group (id > 5) to selection list WITH members for filtering
+                    if g.id > 5 {
+                        let members_clone: Vec<PersonData> = members_vec.iter().map(|m| PersonData {
+                            id: m.id,
+                            name: m.name.clone(),
+                            surname: m.surname.clone(),
+                            rank: m.rank.clone(),
+                            methodology: m.methodology
+                        }).collect();
+                        groups_list.push(GroupData {
+                            id: g.id,
+                            name: SharedString::from(g.name.clone()),
+                            members: ModelRc::new(VecModel::from(members_clone))
+                        });
+                        group_names.push(SharedString::from(g.name.clone()));
+                    }
                     GroupData { id: g.id, name: SharedString::from(g.name), members: ModelRc::new(VecModel::from(members_vec)) }
                 }).collect();
+                // Cache selection data
+                *selection_groups_rc.borrow_mut() = groups_list.clone();
+                *all_persons_rc.borrow_mut() = persons_list.clone();
+
+                // Pre-filter persons when form is first displayed: exclude members of the first selectable group (index 0) if any.
+                let initial_filtered: Vec<PersonData> = if let Some(first_group) = groups_list.get(0) {
+                    // Collect member ids of first selectable group
+                    let mut member_ids: HashSet<i32> = HashSet::new();
+                    for i in 0..first_group.members.row_count() {
+                        if let Some(pd) = first_group.members.row_data(i) {
+                            member_ids.insert(pd.id);
+                        }
+                    }
+                    persons_list
+                        .iter()
+                        .filter(|p| !member_ids.contains(&p.id))
+                        .cloned()
+                        .collect()
+                } else {
+                    persons_list.clone()
+                };
+                app.set_filtered_persons_to_group(ModelRc::new(VecModel::from(initial_filtered)));
                 app.set_groups(ModelRc::new(VecModel::from(groups_model)));
-                //TODO add loop for adding persons to persons_list and groups_list
                 app.set_persons_to_group(ModelRc::new(VecModel::from(persons_list)));
+                app.set_groups_to_group(ModelRc::new(VecModel::from(groups_list)));
+                app.set_groups_to_group_names(ModelRc::new(VecModel::from(group_names)));
             }
         }
     };
 
     refresh_groups();
+
+    // Handle group selection changes for filtering persons (no timer; custom dropdown triggers callback)
+    {
+        let app_weak = app.as_weak();
+        let selection_groups_rc = selection_groups.clone();
+        let all_persons_rc = all_persons_for_selection.clone();
+        app.on_group_selection_changed(move |group_index| {
+            let app = app_weak.unwrap();
+            let groups_vec = selection_groups_rc.borrow();
+            let persons_vec = all_persons_rc.borrow();
+            if group_index >= 0 && (group_index as usize) < groups_vec.len() {
+                let selected_group = &groups_vec[group_index as usize];
+                let mut member_ids: HashSet<i32> = HashSet::new();
+                for i in 0..selected_group.members.row_count() {
+                    if let Some(pd) = selected_group.members.row_data(i) {
+                        member_ids.insert(pd.id);
+                    }
+                }
+                let filtered: Vec<PersonData> = persons_vec
+                    .iter()
+                    .filter(|p| !member_ids.contains(&p.id))
+                    .cloned()
+                    .collect();
+                app.set_filtered_persons_to_group(ModelRc::new(VecModel::from(filtered)));
+            } else {
+                app.set_filtered_persons_to_group(ModelRc::new(VecModel::from(persons_vec.clone())));
+            }
+        });
+    }
 
     {
     let conn_rc = conn.clone();
@@ -131,9 +224,30 @@ fn main() -> Result<(), Box<dyn Error>> {
             move |person_id, group_id| {
                 {
                     let mut conn_ref = conn_rc.borrow_mut();
-                    if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::GroupMembers(group_id, person_id)) {
-                        eprintln!("Error during insertion of relation: {}", e);
-                        return;
+                    // Duplicate membership guard
+                    let exists: rusqlite::Result<Option<i32>> = conn_ref.query_row(
+                        "SELECT 1 FROM `GroupMembers` WHERE `group_id` = ?1 AND `person_id` = ?2 LIMIT 1;",
+                        (group_id, person_id),
+                        |row| row.get(0)
+                    ).map(Some).or_else(|e| {
+                        if let rusqlite::Error::QueryReturnedNoRows = e { Ok(None) } else { Err(e) }
+                    });
+
+                    match exists {
+                        Ok(Some(_)) => {
+                            eprintln!("Relation already exists: person {} in group {}", person_id, group_id);
+                            return; // Skip duplicate insert
+                        }
+                        Ok(None) => {
+                            if let Err(e) = db_operations::insert_to_db(&mut *conn_ref, db_operations::DatabaseRecord::GroupMembers(group_id, person_id)) {
+                                eprintln!("Error during insertion of relation: {}", e);
+                                return;
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Error checking existing relation: {}", e);
+                            return;
+                        }
                     }
                 }
 

@@ -17,12 +17,15 @@ export component MainWindow inherits Window {
     in-out property <[PersonData]> people;
     in-out property <[GroupData]> groups;
 
-    in-out property <[string]> persons_to_group;
-    in-out property <[string]> groups_to_group;
+    in-out property <[PersonData]> persons_to_group;
+    in-out property <[GroupData]> groups_to_group;
+    in-out property <[string]> groups_to_group_names; // names for ComboBox
+    in-out property <[PersonData]> filtered_persons_to_group; // persons excluding those already in selected group
 
     callback add_person_request(string, string, int, int);
     callback add_group_request(string);
     callback add_person_to_group_request(int, int);
+    callback group_selection_changed(int);
     callback remove_person_request(int);
     
     function change_screen(index: int) {
@@ -170,16 +173,24 @@ export component MainWindow inherits Window {
                     y: 150px;
 
                     persons <=> persons_to_group;
+                    filtered_persons <=> filtered_persons_to_group;
                     groups <=> groups_to_group;
+                    groups_names <=> groups_to_group_names;
 
                     exit => {
                         add_person_to_group_modal.visible = false;
                     }
 
                     submit => {
-                        root.add_person_to_group_request(self.person, self.group);
+                        // Pass real IDs instead of indices
+                        if self.group >= 0 && self.group < groups_to_group.length && self.person >= 0 && self.person < persons_to_group.length {
+                            root.add_person_to_group_request(persons_to_group[self.person].id, groups_to_group[self.group].id);
+                        }
                         add_person_to_group_modal.visible = false;
                     }
+
+                    // Forward child callback to MainWindow
+                    group_selection_changed => { root.group_selection_changed(self.group); }
                 }
             }
         }
