@@ -51,7 +51,16 @@ export component MainWindow inherits Window {
 
                 VerticalBox {
                     spacing: 5px;
-                    // Current state of persons
+                    HorizontalBox {
+                        VerticalBox {
+                            Text { text: @tr("PERSONEL"); }
+                            state_persons := ListView { }
+                        }
+                        VerticalBox {
+                            Text { text: @tr("GROUPS"); }
+                            state_groups := ListView { }
+                        }
+                    }
                 }
             }
             HorizontalBox {
@@ -70,30 +79,6 @@ export component MainWindow inherits Window {
                 spacing: 5px;
 
                 Title { text: @tr("PERSONEL_LIST"); }
-                /*ListView {
-                    for p in root.people: HorizontalBox {
-                        height: root.height * 0.05;
-                        
-                        Rectangle {
-                            background: p.methodology;
-                            width: 6px;
-                            height: 6px;
-                            border-radius: 6px;
-                        }
-
-                        Rectangle {
-                            Text {
-                                text: p.rank + " " + p.name + " " + p.surname;
-                            }
-                        }
-
-                        Button {
-                            icon: @image-url("./../assets/images/delete.svg");
-                            colorize-icon: true;
-                            clicked => { remove_person_request(p.id) }
-                        }
-                    }
-                }*/
 
                 GroupsPanel {
                     groups: root.groups;

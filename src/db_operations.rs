@@ -1,3 +1,7 @@
+// For development purpose to eleminate warnings
+// Remove beafore compiling finale version!!!
+#![allow(unused)]
+
 use std::error::Error;
 use std::path::PathBuf;
 use std::fs::create_dir_all;
@@ -214,7 +218,7 @@ fn db_path() -> PathBuf {
     cfg_if! {
         if #[cfg(target_os = "windows")] {
             //let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-            let dir = PathBuf::from("C:/Users/fanok/Desktop/programowanie/Rust/eWartownik/db"); //base.join("eWartownik");
+            let dir = PathBuf::from("C:/Users/Admin/Desktop/test/eWartownik/db"); //base.join("eWartownik");
         } else if #[cfg(target_os = "linux")] {
             let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
             let dir = base.join("eWartownik");
