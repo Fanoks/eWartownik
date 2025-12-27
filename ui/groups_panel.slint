@@ -13,6 +13,7 @@ component GroupItem inherits Rectangle {
     background: expanded ? #2E2E2E : #252525;
     border-radius: 8px;
     width: 100%;
+
     VerticalBox {
         spacing: 8px;
         
@@ -75,7 +76,7 @@ export component GroupsPanel inherits Rectangle {
     // `groups` is expected to include all groups (including "Camp" and methodology groups).
     // The UI will show all of them; the Rust controller decides ordering.
     background: #202020;
-    height: 80%;
+    height: 71%;
     width: 100%;
 
     ScrollView {

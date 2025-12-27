@@ -35,6 +35,7 @@ export component GroupComboBox inherits VerticalBox {
             background: i == current ? #333333 : #252525;
             border-radius: 4px;
             Text { text: e; vertical-alignment: center; }
+            Text { text: e; vertical-alignment: center; }
             TouchArea { clicked => { current = i; open = false; root.changed(current); } }
         }
     }
@@ -237,7 +238,7 @@ export component AddPersonToGroupPage inherits Window {
             }
 
             Button {
-                text: @tr("ADD_GROUP");
+                text: @tr("ADD_PERSON_TO_GROUP");
                 enabled: can_submit && root.person >= 0 && root.group >= 0;
                 clicked => { root.submit(); }
             }

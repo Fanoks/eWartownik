@@ -51,7 +51,16 @@ export component MainWindow inherits Window {
 
                 VerticalBox {
                     spacing: 5px;
-                    // Current state of persons
+                    HorizontalBox {
+                        VerticalBox {
+                            Text { text: @tr("PERSONEL"); }
+                            state_persons := ListView { }
+                        }
+                        VerticalBox {
+                            Text { text: @tr("GROUPS"); }
+                            state_groups := ListView { }
+                        }
+                    }
                 }
             }
             HorizontalBox {
