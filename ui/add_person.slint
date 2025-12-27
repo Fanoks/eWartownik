@@ -1,7 +1,12 @@
 import { ListView, Button, VerticalBox, LineEdit, ComboBox, HorizontalBox } from "std-widgets.slint";
 import { PersonData, GroupData } from "types.slint";
 
-// Custom lightweight dropdown without timer polling
+// Custom lightweight dropdown.
+//
+// Why not use the standard ComboBox?
+// The intent here is to have explicit "changed" signaling under our control
+// (no timer/polling), so the Rust side can recompute the filtered persons list
+// when the selected group changes.
 export component GroupComboBox inherits VerticalBox {
     in-out property <[string]> entries;
     in-out property <int> current: -1;
@@ -29,7 +34,7 @@ export component GroupComboBox inherits VerticalBox {
             width: parent.width;
             background: i == current ? #333333 : #252525;
             border-radius: 4px;
-            Text { text: e; vertical-alignment: center; padding-left: 6px; }
+            Text { text: e; vertical-alignment: center; }
             TouchArea { clicked => { current = i; open = false; root.changed(current); } }
         }
     }
@@ -45,6 +50,10 @@ export component AddPersonPage inherits Window {
     in-out property <int> rank;
     in-out property <int> methodology;
     property <bool> can_submit: !name.is-empty && !surname.is-empty;
+
+    // These callbacks are wired by the main app:
+    // - exit: close the modal and discard changes
+    // - submit: validate + send data to Rust via callback
 
     callback exit();
     callback submit();
@@ -150,7 +159,7 @@ export component AddGroupPage inherits Window {
     }
 }
 
-export component AddPerosnToGroupPage inherits Window {
+export component AddPersonToGroupPage inherits Window {
     width: 340px;
     height: 320px;
     title: @tr("ADD_PERSON_TO_GROUP");
@@ -160,11 +169,17 @@ export component AddPerosnToGroupPage inherits Window {
     in-out property <[GroupData]> groups;
     in-out property <[string]> groups_names;
 
+    // Selection indices into `filtered_persons` and `groups_names`.
+    // Rust converts them to actual IDs when submitting.
+
     in-out property <int> person;
     in-out property <int> group;
     property <bool> can_submit: true;
 
     callback group_selection_changed(int);
+
+    // `group_selection_changed` is forwarded to MainWindow.
+    // Rust then updates `filtered_persons` to exclude people already in the chosen group.
 
     callback check();
     callback exit();
@@ -196,7 +211,7 @@ export component AddPerosnToGroupPage inherits Window {
             }
             // Auto-filter handled by component-level group-changed handler below
 
-            Text { text: @tr("CHOOSE_PEROSN"); }
+            Text { text: @tr("CHOOSE_PERSON"); }
             if filtered_persons.length == 0: Rectangle {
                 width: parent.width - 24px;
                 height: 140px;
@@ -209,7 +224,6 @@ export component AddPerosnToGroupPage inherits Window {
                     height: 32px;
                     background: index == root.person ? #333333 : #252525;
                     border-radius: 6px;
-                    padding: 4px;
                     HorizontalBox {
                         spacing: 8px;
                         Rectangle {

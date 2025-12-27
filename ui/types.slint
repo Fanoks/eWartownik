@@ -1,4 +1,7 @@
 export struct PersonData {
+    // Mirrors the Rust-side person model, but with UI-friendly fields:
+    // - `rank` is already translated key name (resolved by Slint's i18n)
+    // - `methodology` is converted to a color for a small indicator dot
     id: int,
     name: string,
     surname: string,

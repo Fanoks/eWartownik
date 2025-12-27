@@ -1,12 +1,17 @@
 import { ScrollView, VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { PersonData, GroupData } from "types.slint";
 
+// Expandable group list used on the "Persons" screen.
+//
+// Notes:
+// - This panel is purely presentational: it doesn't mutate the model.
+// - Sorting of members is done on the Rust side (see app_controller/refresh.rs).
+
 component GroupItem inherits Rectangle {
     in property <GroupData> group_data;
     private property <bool> expanded: false;
     background: expanded ? #2E2E2E : #252525;
     border-radius: 8px;
-    padding: 8px;
     width: 100%;
     VerticalBox {
         spacing: 8px;
@@ -57,7 +62,6 @@ component GroupItem inherits Rectangle {
                             color: #FFFFFF;
                             font-size: 14px;
                             vertical-alignment: center;
-                            padding-left: 6px;
                         }
                     }
                 }
@@ -68,6 +72,8 @@ component GroupItem inherits Rectangle {
 
 export component GroupsPanel inherits Rectangle {
     in property <[GroupData]> groups;
+    // `groups` is expected to include all groups (including "Camp" and methodology groups).
+    // The UI will show all of them; the Rust controller decides ordering.
     background: #202020;
     height: 80%;
     width: 100%;

@@ -6,7 +6,7 @@ A small desktop GUI application built with Rust and Slint. This is a temporary R
 Features
 - Rust + Slint UI (native-looking, cross‑platform)
 - Bundled translations (i18n) using Slint; current locales in `lang/`
-- SQLite ready via `rusqlite` (for future data persistence)
+- SQLite persistence via `rusqlite`
 
 Requirements
 - Rust (stable) and Cargo
@@ -27,12 +27,14 @@ cargo build --release
 Internationalization (i18n)
 - Translation files live under `lang/<locale>/LC_MESSAGES/eWartownik.po`.
 - Translations are bundled at build time via `build.rs` (see `with_bundled_translations("lang")`).
-- The app currently selects Polish by default in `src/main.rs` using:
-	`slint::select_bundled_translation("pl");`
+- The app currently selects English by default in `src/main.rs` using:
+	`slint::select_bundled_translation("en");`
 - To change the default language, adjust the code above or call it with a different locale code (e.g., `"en"`, `"de"`, `"jp"`).
 
 Project structure
-- `src/main.rs` – Rust entry point and app setup
+- `src/main.rs` – Entry point (bootstraps DB + UI, selects language)
+- `src/app_controller/` – UI controller glue (wires callbacks + refresh logic)
+- `src/db_operations/` – SQLite DB layer (connection/schema/queries/writes)
 - `ui/` – Slint UI files (`app.slint`, `title.slint`, icons in `images/`)
 - `build.rs` – Slint build configuration (bundled translations, style)
 - `lang/` – Translation catalogs (PO files per locale)

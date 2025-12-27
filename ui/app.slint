@@ -1,6 +1,6 @@
 import { VerticalBox, HorizontalBox, Button, CheckBox, GroupBox, ListView, StandardButton } from "std-widgets.slint";
 import { Title } from "title.slint";
-import { AddPersonPage, AddGroupPage, AddPerosnToGroupPage } from "add_person.slint";
+import { AddPersonPage, AddGroupPage, AddPersonToGroupPage } from "add_person.slint";
 import { GroupsPanel } from "groups_panel.slint";
 import { PersonData, GroupData } from "types.slint";
 import "./../assets/fonts/Quicksand/static/Quicksand-Regular.ttf";
@@ -47,7 +47,7 @@ export component MainWindow inherits Window {
 
             Title { text: "eWartownik"; }
             GroupBox {
-                title: @tr("CURRENT_PERSONEL_LIST");
+                title: @tr("CURRENT_PERSONNEL_LIST");
 
                 VerticalBox {
                     spacing: 5px;
@@ -69,7 +69,7 @@ export component MainWindow inherits Window {
             VerticalLayout {
                 spacing: 5px;
 
-                Title { text: @tr("PERSONEL_LIST"); }
+                Title { text: @tr("PERSONNEL_LIST"); }
                 /*ListView {
                     for p in root.people: HorizontalBox {
                         height: root.height * 0.05;
@@ -168,7 +168,7 @@ export component MainWindow inherits Window {
                 y: 0;
                 background: #00000080;
 
-                AddPerosnToGroupPage {
+                AddPersonToGroupPage {
                     x: (parent.width - self.width) / 2;
                     y: 150px;
 
