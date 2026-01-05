@@ -61,8 +61,22 @@ pub fn install(app: &MainWindow, conn: Rc<RefCell<Connection>>) {
         out_person_ids.clone(),
         group_members_by_id,
     );
-    handlers::wire_main_get_in(app, all_persons_for_selection.clone(), checked_person_ids.clone(), out_person_ids.clone());
-    handlers::wire_main_get_out(app, all_persons_for_selection.clone(), checked_person_ids.clone(), out_person_ids);
+    handlers::wire_main_get_in(
+        app,
+        conn.clone(),
+        all_persons_for_selection.clone(),
+        checked_person_ids.clone(),
+        out_person_ids.clone(),
+        refresh_groups.clone(),
+    );
+    handlers::wire_main_get_out(
+        app,
+        conn.clone(),
+        all_persons_for_selection.clone(),
+        checked_person_ids.clone(),
+        out_person_ids,
+        refresh_groups.clone(),
+    );
 
     handlers::wire_add_person_request(app, conn.clone(), refresh_groups.clone());
     handlers::wire_add_group_request(app, conn.clone(), refresh_groups.clone());

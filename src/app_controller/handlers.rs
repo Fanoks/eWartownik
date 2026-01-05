@@ -71,6 +71,7 @@ pub(super) fn wire_add_person_request(
             surname: surname.to_string(),
             rank_level: rank_enum,
             methodology: methodology_enum,
+            is_inside: db_operations::IsInside::Out,
         };
 
         {
@@ -222,9 +223,11 @@ pub(super) fn wire_main_group_clicked(
 
 pub(super) fn wire_main_get_in(
     app: &MainWindow,
+    conn: Rc<RefCell<Connection>>,
     all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
     checked_person_ids: Rc<RefCell<HashSet<i32>>>,
     out_person_ids: Rc<RefCell<HashSet<i32>>>,
+    refresh_groups: impl Fn() + Clone + 'static,
 ) {
     let app_weak = app.as_weak();
     app.on_main_get_in(move || {
@@ -233,6 +236,17 @@ pub(super) fn wire_main_get_in(
         };
 
         let selected: Vec<i32> = checked_person_ids.borrow().iter().copied().collect();
+
+        // Persist DB state
+        {
+            let conn_ref = conn.borrow();
+            for id in &selected {
+                if let Err(e) = db_operations::set_person_is_inside(&*conn_ref, *id, db_operations::IsInside::In) {
+                    eprintln!("Error updating person is_inside (GET_IN) for id {}: {}", id, e);
+                }
+            }
+        }
+
         {
             let mut out = out_person_ids.borrow_mut();
             for id in &selected {
@@ -242,15 +256,18 @@ pub(super) fn wire_main_get_in(
         checked_person_ids.borrow_mut().clear();
 
         main_debug!("[main] GET_IN moved {} ids", selected.len());
+        refresh_groups();
         set_main_people_models(&app, &all_persons_for_main.borrow(), &out_person_ids.borrow(), &checked_person_ids.borrow());
     });
 }
 
 pub(super) fn wire_main_get_out(
     app: &MainWindow,
+    conn: Rc<RefCell<Connection>>,
     all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
     checked_person_ids: Rc<RefCell<HashSet<i32>>>,
     out_person_ids: Rc<RefCell<HashSet<i32>>>,
+    refresh_groups: impl Fn() + Clone + 'static,
 ) {
     let app_weak = app.as_weak();
     app.on_main_get_out(move || {
@@ -259,6 +276,17 @@ pub(super) fn wire_main_get_out(
         };
 
         let selected: Vec<i32> = checked_person_ids.borrow().iter().copied().collect();
+
+        // Persist DB state
+        {
+            let conn_ref = conn.borrow();
+            for id in &selected {
+                if let Err(e) = db_operations::set_person_is_inside(&*conn_ref, *id, db_operations::IsInside::Out) {
+                    eprintln!("Error updating person is_inside (GET_OUT) for id {}: {}", id, e);
+                }
+            }
+        }
+
         {
             let mut out = out_person_ids.borrow_mut();
             for id in &selected {
@@ -268,6 +296,7 @@ pub(super) fn wire_main_get_out(
         checked_person_ids.borrow_mut().clear();
 
         main_debug!("[main] GET_OUT moved {} ids", selected.len());
+        refresh_groups();
         set_main_people_models(&app, &all_persons_for_main.borrow(), &out_person_ids.borrow(), &checked_person_ids.borrow());
     });
 }

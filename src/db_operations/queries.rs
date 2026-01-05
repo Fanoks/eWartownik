@@ -2,12 +2,12 @@ use std::error::Error;
 
 use rusqlite::Connection;
 
-use super::{parse_db_datetime, Group, GroupWithMembers, Person, RankLevel, Methodology};
+use super::{parse_db_datetime, Group, GroupWithMembers, Methodology, Person, RankLevel};
 
 #[allow(dead_code)]
 pub fn get_person(conn: &Connection) -> Result<Vec<Person>, Box<dyn Error>> {
     let mut stmt = conn.prepare(
-        "SELECT `id`, `name`, `surname`, `rank_level`, `methodology` FROM `Person`;",
+        "SELECT `id`, `name`, `surname`, `rank_level`, `methodology`, `is_inside` FROM `Person`;",
     )?;
 
     let person_iter = stmt.query_map([], |row| {
@@ -17,6 +17,7 @@ pub fn get_person(conn: &Connection) -> Result<Vec<Person>, Box<dyn Error>> {
             surname: row.get(2)?,
             rank_level: row.get(3)?,
             methodology: row.get(4)?,
+            is_inside: row.get(5)?,
         })
     })?;
 
@@ -74,7 +75,7 @@ pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>
     }
 
     let mut members_stmt = conn.prepare(
-        "SELECT `gm`.`group_id`, `p`.`id`, `p`.`name`, `p`.`surname`, `p`.`rank_level`, `p`.`methodology`
+        "SELECT `gm`.`group_id`, `p`.`id`, `p`.`name`, `p`.`surname`, `p`.`rank_level`, `p`.`methodology`, `p`.`is_inside`
          FROM `GroupMembers` `gm`
          JOIN `Person` `p` ON `gm`.`person_id` = `p`.`id`;",
     )?;
@@ -88,6 +89,7 @@ pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>
                 surname: row.get(3)?,
                 rank_level: RankLevel::try_from(row.get::<_, i32>(4)?).unwrap_or(RankLevel::RankNone),
                 methodology: Methodology::try_from(row.get::<_, i32>(5)?).unwrap_or(Methodology::Cub),
+                is_inside: row.get(6)?,
             },
         ))
     })?;

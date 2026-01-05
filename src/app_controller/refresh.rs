@@ -49,6 +49,26 @@ pub(super) fn make_refresh_groups(
         // Order groups by id
         groups.sort_by_key(|g| g.id);
 
+        // Sync OUT set from DB-backed Person.is_inside using the special "all persons" group.
+        if let Some(all_group) = groups.iter_mut().find(|g| g.id == ALL_PERSONS_GROUP_ID) {
+            sort_members(&mut all_group.members);
+
+            persons_list = all_group
+                .members
+                .clone()
+                .into_iter()
+                .map(person_to_person_data)
+                .collect();
+
+            let mut out_set = out_person_ids.borrow_mut();
+            out_set.clear();
+            for p in &all_group.members {
+                if p.is_inside == db_operations::IsInside::Out {
+                    out_set.insert(p.id);
+                }
+            }
+        }
+
         // Update group->member_ids lookup for main screen actions
         {
             let mut map = group_members_by_id.borrow_mut();
@@ -68,11 +88,6 @@ pub(super) fn make_refresh_groups(
                     .into_iter()
                     .map(person_to_person_data)
                     .collect();
-
-                // Capture global persons list from group id 1 if not yet filled
-                if group.id == ALL_PERSONS_GROUP_ID && persons_list.is_empty() {
-                    persons_list = members_vec.clone();
-                }
 
                 // Add user-manageable group (id > 5) to selection list WITH members for filtering
                 if group.id >= FIRST_USER_MANAGED_GROUP_ID {

@@ -26,9 +26,10 @@ pub use delete::delete_from_db;
 pub use insert::insert_to_db;
 #[allow(unused_imports)]
 pub use queries::{get_group, get_group_member, get_group_with_members, get_person, get_log};
-pub use types::{Methodology, RankLevel, Person, Group, GroupWithMembers, DatabaseRecord};
+pub use types::{IsInside, Methodology, RankLevel, Person, Group, GroupWithMembers, DatabaseRecord};
 #[allow(unused_imports)]
 pub use update::update_db;
+pub use update::set_person_is_inside;
 
 // Internal-only items shared across db submodules.
 pub(in crate::db_operations) use types::Log;

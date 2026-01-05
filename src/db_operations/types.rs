@@ -160,8 +160,8 @@ impl_sql_enum_for!(EntityType {
     Group = 1,
 });
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub(in crate::db_operations) enum IsInside {
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum IsInside {
     Out = 0,
     In = 1,
 }
@@ -178,6 +178,7 @@ pub struct Person {
     pub surname: String,
     pub rank_level: RankLevel,
     pub methodology: Methodology,
+    pub is_inside: IsInside,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

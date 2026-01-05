@@ -15,12 +15,13 @@ pub fn insert_to_db(conn: &Connection, record: DatabaseRecord) -> Result<(), Box
 
 fn insert_person(conn: &Connection, person: &Person) -> Result<(), Box<dyn Error>> {
     conn.execute(
-        "INSERT INTO `Person`(`name`, `surname`, `rank_level`, `methodology`) VALUES(?1, ?2, ?3, ?4);",
+        "INSERT INTO `Person`(`name`, `surname`, `rank_level`, `methodology`, `is_inside`) VALUES(?1, ?2, ?3, ?4, ?5);",
         (
             &person.name,
             &person.surname,
             person.rank_level as i32,
             person.methodology as i32,
+            &person.is_inside,
         ),
     )?;
 

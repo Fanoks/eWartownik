@@ -9,7 +9,8 @@ pub(super) fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
             `name` TEXT NOT NULL,
             `surname` TEXT NOT NULL,
             `rank_level` INTEGER NOT NULL,
-            `methodology` INTEGER NOT NULL
+            `methodology` INTEGER NOT NULL,
+            `is_inside` BOOLEAN NOT NULL DEFAULT 0
         );",
         (),
     )?;
