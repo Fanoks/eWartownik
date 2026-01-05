@@ -3,6 +3,8 @@ use std::{
     rc::Rc,
 };
 
+use std::collections::{HashMap, HashSet};
+
 use rusqlite::Connection;
 use slint::{ModelRc, SharedString, VecModel};
 
@@ -24,6 +26,9 @@ pub(super) fn make_refresh_groups(
     conn: Rc<RefCell<Connection>>,
     selection_groups: Rc<RefCell<Vec<GroupData>>>,
     all_persons_for_selection: Rc<RefCell<Vec<PersonData>>>,
+    checked_person_ids: Rc<RefCell<HashSet<i32>>>,
+    out_person_ids: Rc<RefCell<HashSet<i32>>>,
+    group_members_by_id: Rc<RefCell<HashMap<i32, Vec<i32>>>>,
 ) -> impl Fn() + Clone + 'static {
     move || {
         let conn_ref = conn.borrow();
@@ -43,6 +48,15 @@ pub(super) fn make_refresh_groups(
 
         // Order groups by id
         groups.sort_by_key(|g| g.id);
+
+        // Update group->member_ids lookup for main screen actions
+        {
+            let mut map = group_members_by_id.borrow_mut();
+            map.clear();
+            for g in &groups {
+                map.insert(g.id, g.members.iter().map(|p| p.id).collect());
+            }
+        }
 
         let groups_model: Vec<_> = groups
             .into_iter()
@@ -89,6 +103,26 @@ pub(super) fn make_refresh_groups(
             persons_list.clone()
         };
 
+        // Main screen lists (IN/OUT).
+        let out_set = out_person_ids.borrow();
+        let mut people_in: Vec<PersonData> = Vec::new();
+        let mut people_out: Vec<PersonData> = Vec::new();
+        for p in &persons_list {
+            if out_set.contains(&p.id) {
+                people_out.push(p.clone());
+            } else {
+                people_in.push(p.clone());
+            }
+        }
+
+        app.set_people(ModelRc::new(VecModel::from(people_in.clone())));
+        app.set_people_out(ModelRc::new(VecModel::from(people_out.clone())));
+
+        let checked_set = checked_person_ids.borrow();
+        let checked_in: Vec<bool> = people_in.iter().map(|p| checked_set.contains(&p.id)).collect();
+        let checked_out: Vec<bool> = people_out.iter().map(|p| checked_set.contains(&p.id)).collect();
+        app.set_people_checked(ModelRc::new(VecModel::from(checked_in)));
+        app.set_people_out_checked(ModelRc::new(VecModel::from(checked_out)));
         app.set_filtered_persons_to_group(ModelRc::new(VecModel::from(initial_filtered)));
         app.set_groups(ModelRc::new(VecModel::from(groups_model)));
         app.set_persons_to_group(ModelRc::new(VecModel::from(persons_list)));

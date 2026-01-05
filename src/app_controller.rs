@@ -9,6 +9,7 @@
 //! - The heavy “refresh everything from DB” work is encapsulated in `refresh::make_refresh_groups()`.
 
 use std::{cell::RefCell, rc::Rc};
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::Connection;
 use slint::ComponentHandle;
@@ -24,11 +25,19 @@ pub fn install(app: &MainWindow, conn: Rc<RefCell<Connection>>) {
     let selection_groups: Rc<RefCell<Vec<GroupData>>> = Rc::new(RefCell::new(Vec::new()));
     let all_persons_for_selection: Rc<RefCell<Vec<PersonData>>> = Rc::new(RefCell::new(Vec::new()));
 
+    // Main screen selection state
+    let checked_person_ids: Rc<RefCell<HashSet<i32>>> = Rc::new(RefCell::new(HashSet::new()));
+    let out_person_ids: Rc<RefCell<HashSet<i32>>> = Rc::new(RefCell::new(HashSet::new()));
+    let group_members_by_id: Rc<RefCell<HashMap<i32, Vec<i32>>>> = Rc::new(RefCell::new(HashMap::new()));
+
     let refresh_groups = refresh::make_refresh_groups(
         app.as_weak(),
         conn.clone(),
         selection_groups.clone(),
         all_persons_for_selection.clone(),
+        checked_person_ids.clone(),
+        out_person_ids.clone(),
+        group_members_by_id.clone(),
     );
 
     refresh_groups();
@@ -38,6 +47,22 @@ pub fn install(app: &MainWindow, conn: Rc<RefCell<Connection>>) {
         selection_groups.clone(),
         all_persons_for_selection.clone(),
     );
+
+    handlers::wire_main_person_toggled(
+        app,
+        all_persons_for_selection.clone(),
+        checked_person_ids.clone(),
+        out_person_ids.clone(),
+    );
+    handlers::wire_main_group_clicked(
+        app,
+        all_persons_for_selection.clone(),
+        checked_person_ids.clone(),
+        out_person_ids.clone(),
+        group_members_by_id,
+    );
+    handlers::wire_main_get_in(app, all_persons_for_selection.clone(), checked_person_ids.clone(), out_person_ids.clone());
+    handlers::wire_main_get_out(app, all_persons_for_selection.clone(), checked_person_ids.clone(), out_person_ids);
 
     handlers::wire_add_person_request(app, conn.clone(), refresh_groups.clone());
     handlers::wire_add_group_request(app, conn.clone(), refresh_groups.clone());

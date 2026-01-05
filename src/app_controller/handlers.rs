@@ -3,6 +3,8 @@ use std::{
     rc::Rc,
 };
 
+use std::collections::{HashMap, HashSet};
+
 use rusqlite::Connection;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
@@ -11,6 +13,18 @@ use crate::{MainWindow, PersonData};
 use crate::db_operations;
 
 use super::filter::filter_persons_excluding_group;
+
+#[cfg(debug_assertions)]
+macro_rules! main_debug {
+    ($($arg:tt)*) => {
+        eprintln!($($arg)*);
+    };
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! main_debug {
+    ($($arg:tt)*) => {};
+}
 
 pub(super) fn wire_group_selection_changed(
     app: &MainWindow,
@@ -129,6 +143,160 @@ pub(super) fn wire_add_person_to_group_request(
 
         refresh_groups();
     });
+}
+
+pub(super) fn wire_main_person_toggled(
+    app: &MainWindow,
+    all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
+    checked_person_ids: Rc<RefCell<HashSet<i32>>>,
+    out_person_ids: Rc<RefCell<HashSet<i32>>>,
+) {
+    let app_weak = app.as_weak();
+    app.on_main_person_toggled(move |person_id| {
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
+
+        let now_checked = {
+            let mut set = checked_person_ids.borrow_mut();
+            if set.contains(&person_id) {
+                set.remove(&person_id);
+                false
+            } else {
+                set.insert(person_id);
+                true
+            }
+        };
+
+        main_debug!("[main] person toggled: id={} -> checked={}", person_id, now_checked);
+        set_main_people_models(
+            &app,
+            &all_persons_for_main.borrow(),
+            &out_person_ids.borrow(),
+            &checked_person_ids.borrow(),
+        );
+    });
+}
+
+pub(super) fn wire_main_group_clicked(
+    app: &MainWindow,
+    all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
+    checked_person_ids: Rc<RefCell<HashSet<i32>>>,
+    out_person_ids: Rc<RefCell<HashSet<i32>>>,
+    group_members_by_id: Rc<RefCell<HashMap<i32, Vec<i32>>>>,
+) {
+    let app_weak = app.as_weak();
+    app.on_main_group_clicked(move |group_id| {
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
+
+        let member_ids = {
+            let map = group_members_by_id.borrow();
+            map.get(&group_id).cloned().unwrap_or_default()
+        };
+
+        main_debug!(
+            "[main] group clicked: id={} members={}",
+            group_id,
+            member_ids.len()
+        );
+
+        {
+            let mut set = checked_person_ids.borrow_mut();
+            set.clear();
+            for id in member_ids {
+                set.insert(id);
+            }
+            main_debug!("[main] checked_person_ids size={}", set.len());
+        }
+
+        set_main_people_models(
+            &app,
+            &all_persons_for_main.borrow(),
+            &out_person_ids.borrow(),
+            &checked_person_ids.borrow(),
+        );
+    });
+}
+
+pub(super) fn wire_main_get_in(
+    app: &MainWindow,
+    all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
+    checked_person_ids: Rc<RefCell<HashSet<i32>>>,
+    out_person_ids: Rc<RefCell<HashSet<i32>>>,
+) {
+    let app_weak = app.as_weak();
+    app.on_main_get_in(move || {
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
+
+        let selected: Vec<i32> = checked_person_ids.borrow().iter().copied().collect();
+        {
+            let mut out = out_person_ids.borrow_mut();
+            for id in &selected {
+                out.remove(id);
+            }
+        }
+        checked_person_ids.borrow_mut().clear();
+
+        main_debug!("[main] GET_IN moved {} ids", selected.len());
+        set_main_people_models(&app, &all_persons_for_main.borrow(), &out_person_ids.borrow(), &checked_person_ids.borrow());
+    });
+}
+
+pub(super) fn wire_main_get_out(
+    app: &MainWindow,
+    all_persons_for_main: Rc<RefCell<Vec<PersonData>>>,
+    checked_person_ids: Rc<RefCell<HashSet<i32>>>,
+    out_person_ids: Rc<RefCell<HashSet<i32>>>,
+) {
+    let app_weak = app.as_weak();
+    app.on_main_get_out(move || {
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
+
+        let selected: Vec<i32> = checked_person_ids.borrow().iter().copied().collect();
+        {
+            let mut out = out_person_ids.borrow_mut();
+            for id in &selected {
+                out.insert(*id);
+            }
+        }
+        checked_person_ids.borrow_mut().clear();
+
+        main_debug!("[main] GET_OUT moved {} ids", selected.len());
+        set_main_people_models(&app, &all_persons_for_main.borrow(), &out_person_ids.borrow(), &checked_person_ids.borrow());
+    });
+}
+
+fn set_main_people_models(
+    app: &MainWindow,
+    persons_all: &[PersonData],
+    out_set: &HashSet<i32>,
+    checked_set: &HashSet<i32>,
+) {
+    let mut people_in: Vec<PersonData> = Vec::new();
+    let mut people_out: Vec<PersonData> = Vec::new();
+    for p in persons_all {
+        if out_set.contains(&p.id) {
+            people_out.push(p.clone());
+        } else {
+            people_in.push(p.clone());
+        }
+    }
+
+    let checked_in: Vec<bool> = people_in.iter().map(|p| checked_set.contains(&p.id)).collect();
+    let checked_out: Vec<bool> = people_out.iter().map(|p| checked_set.contains(&p.id)).collect();
+
+    app.set_people_checked(ModelRc::new(VecModel::from(checked_in)));
+    app.set_people_out_checked(ModelRc::new(VecModel::from(checked_out)));
+
+    // Recreate delegates to restore one-way bindings after user toggles.
+    app.set_people(ModelRc::new(VecModel::from(people_in)));
+    app.set_people_out(ModelRc::new(VecModel::from(people_out)));
 }
 
 fn relation_exists(conn: &Connection, group_id: i32, person_id: i32) -> rusqlite::Result<bool> {

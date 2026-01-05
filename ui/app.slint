@@ -15,6 +15,9 @@ export component MainWindow inherits Window {
 
     in-out property <int> current_screen: 0; // 0 = main, 1 = persons, 2 = logs, 3 = setings
     in-out property <[PersonData]> people;
+    in-out property <[PersonData]> people_out;
+    in-out property <[bool]> people_checked;
+    in-out property <[bool]> people_out_checked;
     in-out property <[GroupData]> groups;
 
     in-out property <[PersonData]> persons_to_group;
@@ -27,6 +30,11 @@ export component MainWindow inherits Window {
     callback add_person_to_group_request(int, int);
     callback group_selection_changed(int);
     callback remove_person_request(int);
+
+    callback main_group_clicked(int);
+    callback main_person_toggled(int);
+    callback main_get_in();
+    callback main_get_out();
     
     function change_screen(index: int) {
         root.current_screen = index;
@@ -54,11 +62,32 @@ export component MainWindow inherits Window {
                     HorizontalBox {
                         VerticalBox {
                             Text { text: @tr("PERSONEL"); }
-                            state_persons := ListView { }
+                            Text { text: @tr("IN"); }
+                            state_persons_in := ListView {
+                                for person[i] in root.people: CheckBox {
+                                    text: person.rank + " " + person.surname + " " + person.name;
+                                    checked: root.people_checked[i];
+                                    toggled => { root.main_person_toggled(person.id); }
+                                }
+                            }
+                            Text { text: @tr("OUT"); }
+                            state_persons_out := ListView {
+                                for person[i] in root.people_out: CheckBox {
+                                    text: person.rank + " " + person.surname + " " + person.name;
+                                    checked: root.people_out_checked[i];
+                                    toggled => { root.main_person_toggled(person.id); }
+                                }
+                            }
                         }
                         VerticalBox {
                             Text { text: @tr("GROUPS"); }
-                            state_groups := ListView { }
+                            Text { text: ""; }
+                            state_groups_in := ListView {
+                                for group in root.groups: Button {
+                                    text: group.name;
+                                    clicked => { root.main_group_clicked(group.id); }
+                                }
+                            }
                         }
                     }
                 }
@@ -66,8 +95,8 @@ export component MainWindow inherits Window {
             HorizontalBox {
                 spacing: 10px;
 
-                Button { text: @tr("GET_IN"); }
-                Button { text: @tr("GET_OUT"); }
+                Button { text: @tr("GET_IN"); clicked => { root.main_get_in(); } }
+                Button { text: @tr("GET_OUT"); clicked => { root.main_get_out(); } }
             }
         }
 
@@ -79,31 +108,7 @@ export component MainWindow inherits Window {
                 spacing: 5px;
 
                 Title { text: @tr("PERSONNEL_LIST"); }
-                /*ListView {
-                    for p in root.people: HorizontalBox {
-                        height: root.height * 0.05;
-                        
-                        Rectangle {
-                            background: p.methodology;
-                            width: 6px;
-                            height: 6px;
-                            border-radius: 6px;
-                        }
-
-                        Rectangle {
-                            Text {
-                                text: p.rank + " " + p.name + " " + p.surname;
-                            }
-                        }
-
-                        Button {
-                            icon: @image-url("./../assets/images/delete.svg");
-                            colorize-icon: true;
-                            clicked => { remove_person_request(p.id) }
-                        }
-                    }
-                }*/
-
+                
                 GroupsPanel {
                     groups: root.groups;
                 }
