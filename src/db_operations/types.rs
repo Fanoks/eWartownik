@@ -196,11 +196,11 @@ pub struct GroupWithMembers {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Log {
-    pub(in crate::db_operations) id: i32,
+    pub id: i32,
     pub(in crate::db_operations) entity_type: EntityType,
-    pub(in crate::db_operations) entity_id: i32,
-    pub(in crate::db_operations) is_inside: IsInside,
-    pub(in crate::db_operations) time: DateTime<Utc>,
+    pub entity_id: i32,
+    pub is_inside: IsInside,
+    pub time: DateTime<Utc>,
 }
 
 #[allow(dead_code)]

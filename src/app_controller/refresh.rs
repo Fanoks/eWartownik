@@ -5,10 +5,11 @@ use std::{
 
 use std::collections::{HashMap, HashSet};
 
+use chrono::Local;
 use rusqlite::Connection;
 use slint::{ModelRc, SharedString, VecModel};
 
-use crate::{GroupData, MainWindow, PersonData};
+use crate::{GroupData, LogData, LogDayGroupData, LogMinuteGroupData, MainWindow, PersonData};
 
 use crate::db_operations;
 
@@ -110,6 +111,90 @@ pub(super) fn make_refresh_groups(
         // Cache selection data
         *selection_groups.borrow_mut() = groups_list.clone();
         *all_persons_for_selection.borrow_mut() = persons_list.clone();
+
+        // Logs screen model (person in/out events)
+        if let Ok(logs) = db_operations::get_log(&conn_ref) {
+            let persons_by_id: HashMap<i32, &PersonData> = persons_list.iter().map(|p| (p.id, p)).collect();
+
+            let mut day_groups: Vec<LogDayGroupData> = Vec::new();
+            let mut current_day: Option<SharedString> = None;
+            let mut current_minutes: Vec<LogMinuteGroupData> = Vec::new();
+            let mut current_minute: Option<SharedString> = None;
+            let mut current_entries: Vec<LogData> = Vec::new();
+
+            let flush_minute = |minute: Option<SharedString>, minutes: &mut Vec<LogMinuteGroupData>, entries: &mut Vec<LogData>| {
+                if let Some(m) = minute {
+                    if !entries.is_empty() {
+                        minutes.push(LogMinuteGroupData {
+                            minute: m,
+                            entries: ModelRc::new(VecModel::from(std::mem::take(entries))),
+                        });
+                    }
+                }
+            };
+
+            let flush_day = |day: Option<SharedString>, days: &mut Vec<LogDayGroupData>, minutes: &mut Vec<LogMinuteGroupData>| {
+                if let Some(d) = day {
+                    if !minutes.is_empty() {
+                        days.push(LogDayGroupData {
+                            day: d,
+                            minutes: ModelRc::new(VecModel::from(std::mem::take(minutes))),
+                        });
+                    }
+                }
+            };
+
+            for l in logs {
+                let p = match persons_by_id.get(&l.entity_id) {
+                    Some(p) => *p,
+                    None => continue,
+                };
+
+                let local_time = l.time.with_timezone(&Local);
+                let day = SharedString::from(local_time.format("%Y-%m-%d").to_string());
+                let minute = SharedString::from(local_time.format("%H:%M").to_string());
+                let seconds = SharedString::from(local_time.format("%H:%M:%S").to_string());
+
+                match &current_day {
+                    Some(cur) if *cur == day => {}
+                    Some(_) => {
+                        flush_minute(current_minute.take(), &mut current_minutes, &mut current_entries);
+                        flush_day(current_day.take(), &mut day_groups, &mut current_minutes);
+                        current_day = Some(day.clone());
+                        current_minute = None;
+                    }
+                    None => {
+                        current_day = Some(day.clone());
+                    }
+                }
+
+                match &current_minute {
+                    Some(cur) if *cur == minute => {}
+                    Some(_) => {
+                        flush_minute(current_minute.take(), &mut current_minutes, &mut current_entries);
+                        current_minute = Some(minute.clone());
+                    }
+                    None => {
+                        current_minute = Some(minute.clone());
+                    }
+                }
+
+                current_entries.push(LogData {
+                    person_id: p.id,
+                    name: p.name.clone(),
+                    surname: p.surname.clone(),
+                    rank: p.rank.clone(),
+                    methodology: p.methodology,
+                    is_in: l.is_inside == db_operations::IsInside::In,
+                    timestamp: seconds,
+                });
+            }
+
+            flush_minute(current_minute.take(), &mut current_minutes, &mut current_entries);
+            flush_day(current_day.take(), &mut day_groups, &mut current_minutes);
+
+            app.set_logs(ModelRc::new(VecModel::from(day_groups)));
+        }
 
         // Pre-filter persons when form is first displayed: exclude members of the first selectable group (index 0) if any.
         let initial_filtered = if let Some(first_group) = groups_list.first() {

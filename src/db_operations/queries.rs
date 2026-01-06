@@ -107,7 +107,7 @@ pub fn get_group_with_members(conn: &Connection) -> Result<Vec<GroupWithMembers>
 #[allow(dead_code)]
 pub fn get_log(conn: &Connection) -> Result<Vec<super::Log>, Box<dyn Error>> {
     let mut stmt = conn.prepare(
-        "SELECT `id`, `entity_type`, `entity_id`, `is_inside`, `timestamp` FROM `Log`;",
+        "SELECT `id`, `entity_type`, `entity_id`, `is_inside`, `timestamp` FROM `Log` WHERE `entity_type` = 0 ORDER BY `timestamp` DESC, `id` DESC;",
     )?;
 
     let log_iter = stmt.query_map([], |row| {

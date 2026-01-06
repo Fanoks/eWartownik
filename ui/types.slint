@@ -14,3 +14,23 @@ export struct GroupData {
     name: string,
     members: [PersonData]
 }
+
+export struct LogData {
+    person_id: int,
+    name: string,
+    surname: string,
+    rank: string,
+    methodology: color,
+    is_in: bool,
+    timestamp: string,
+}
+
+export struct LogMinuteGroupData {
+    minute: string,
+    entries: [LogData],
+}
+
+export struct LogDayGroupData {
+    day: string,
+    minutes: [LogMinuteGroupData],
+}

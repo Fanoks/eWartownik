@@ -14,7 +14,7 @@ export component GroupComboBox inherits VerticalBox {
     property <bool> open: false;
 
     Rectangle {
-        height: 28px;
+        height: 40px;
         width: parent.width;
         background: #252525;
         border-radius: 4px;
@@ -30,7 +30,7 @@ export component GroupComboBox inherits VerticalBox {
     if open: VerticalBox {
         spacing: 4px;
         for e[i] in entries: Rectangle {
-            height: 26px;
+            height: 40px;
             width: parent.width;
             background: i == current ? #333333 : #252525;
             border-radius: 4px;
@@ -42,8 +42,8 @@ export component GroupComboBox inherits VerticalBox {
 }
 
 export component AddPersonPage inherits Window {
-    width: 340px;
-    height: 380px;
+    width: 360px;
+    height: 420px;
     title: @tr("ADD_PERSON");
 
     in-out property <string> name;
@@ -68,6 +68,7 @@ export component AddPersonPage inherits Window {
             y: 10px;
             icon: @image-url("./../assets/images/close.svg");
             colorize-icon: true;
+            height: 44px;
             clicked => { root.exit(); }
         }
 
@@ -114,6 +115,7 @@ export component AddPersonPage inherits Window {
             Button {
                 text: @tr("ADD_PERSON");
                 enabled: can_submit;
+                height: 44px;
                 clicked => { root.submit(); }
             }
         }
@@ -121,8 +123,8 @@ export component AddPersonPage inherits Window {
 }
 
 export component AddGroupPage inherits Window {
-    width: 340px;
-    height: 180px;
+    width: 360px;
+    height: 220px;
     title: @tr("ADD_GROUP");
 
     in-out property <string> name;
@@ -140,6 +142,7 @@ export component AddGroupPage inherits Window {
             y: 10px;
             icon: @image-url("./../assets/images/close.svg");
             colorize-icon: true;
+            height: 44px;
             clicked => { root.exit(); }
         }
 
@@ -154,6 +157,7 @@ export component AddGroupPage inherits Window {
             Button {
                 text: @tr("ADD_GROUP");
                 enabled: can_submit;
+                height: 44px;
                 clicked => { root.submit(); }
             }
         }
@@ -161,8 +165,8 @@ export component AddGroupPage inherits Window {
 }
 
 export component AddPersonToGroupPage inherits Window {
-    width: 340px;
-    height: 320px;
+    width: 360px;
+    height: 360px;
     title: @tr("ADD_PERSON_TO_GROUP");
 
     in-out property <[PersonData]> persons; // original full list
@@ -196,6 +200,7 @@ export component AddPersonToGroupPage inherits Window {
             y: 10px;
             icon: @image-url("./../assets/images/close.svg");
             colorize-icon: true;
+            height: 44px;
             clicked => { root.exit(); }
         }
 
@@ -222,7 +227,7 @@ export component AddPersonToGroupPage inherits Window {
                 width: parent.width - 24px;
                 height: 140px;
                 for p[index] in filtered_persons: Rectangle {
-                    height: 32px;
+                    height: 44px;
                     background: index == root.person ? #333333 : #252525;
                     border-radius: 6px;
                     HorizontalBox {
@@ -240,6 +245,7 @@ export component AddPersonToGroupPage inherits Window {
             Button {
                 text: @tr("ADD_PERSON_TO_GROUP");
                 enabled: can_submit && root.person >= 0 && root.group >= 0;
+                height: 44px;
                 clicked => { root.submit(); }
             }
         }
